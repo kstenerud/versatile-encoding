@@ -307,8 +307,8 @@ public class BinaryCodec {
         }
 
         private static class Reader {
-            final BinaryBuffer buffer;
-            int currentOffset;
+            private final BinaryBuffer buffer;
+            private int currentOffset;
 
             public Reader(@Nonnull BinaryBuffer buffer) {
                 this.buffer = buffer;

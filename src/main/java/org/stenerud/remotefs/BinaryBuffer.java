@@ -1,7 +1,9 @@
 package org.stenerud.remotefs;
 
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 
 public class BinaryBuffer {
     public final byte[] data;
@@ -9,14 +11,14 @@ public class BinaryBuffer {
     public final int endOffset;
     public final int length;
 
-    public BinaryBuffer(byte[] data, int startOffset, int endOffset) {
+    public BinaryBuffer(@Nonnull byte[] data, int startOffset, int endOffset) {
         this.data = data;
         this.startOffset = startOffset;
         this.endOffset = endOffset;
         this.length = endOffset - startOffset;
     }
 
-    public BinaryBuffer(byte[] data) {
+    public BinaryBuffer(@Nonnull byte[] data) {
         this(data, 0, data.length);
     }
 
@@ -24,15 +26,15 @@ public class BinaryBuffer {
         this(new byte[length], 0, length);
     }
 
-    public BinaryBuffer view(int startOffset, int endOffset) {
+    public @Nonnull BinaryBuffer view(int startOffset, int endOffset) {
         return new BinaryBuffer(data, startOffset, endOffset);
     }
 
-    public BinaryBuffer view(int startOffset) {
+    public @Nonnull BinaryBuffer view(int startOffset) {
         return new BinaryBuffer(data, startOffset, endOffset);
     }
 
-    public BinaryBuffer view() {
+    public @Nonnull BinaryBuffer view() {
         return view(startOffset, endOffset);
     }
 
@@ -62,11 +64,11 @@ public class BinaryBuffer {
         }
     }
 
-    public BinaryBuffer copy() {
+    public @Nonnull BinaryBuffer copy() {
         return copy(startOffset, endOffset);
     }
 
-    public BinaryBuffer copy(int startOffset, int endOffset) {
+    public @Nonnull BinaryBuffer copy(int startOffset, int endOffset) {
         int length = endOffset - startOffset;
         BinaryBuffer newBuffer = new BinaryBuffer(length);
         int si = startOffset;
@@ -78,7 +80,7 @@ public class BinaryBuffer {
     }
 
     @Override
-    public boolean equals(Object otherObject) {
+    public boolean equals(@CheckForNull Object otherObject) {
         if(otherObject == null) {
             return false;
         }
@@ -102,6 +104,15 @@ public class BinaryBuffer {
         }
         return true;
     }
+
+    @Override
+    public int hashCode() {
+        int result = 1;
+        for(int i = startOffset; i < endOffset; i++) {
+            result = 31 * result + data[i];
+        }
+        result = 31 * result + startOffset;
+        result = 31 * result + endOffset;
+        return result;
+    }
 }
-//copy to array
-//copy create buffer

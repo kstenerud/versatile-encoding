@@ -18,10 +18,10 @@ public class BinaryBufferTest {
     }
 
     @Test
-    public void testToString() throws Exception {
+    public void testUTF8String() throws Exception {
         String expected = "this is a test";
         BinaryBuffer buffer = new BinaryBuffer(expected.getBytes("UTF-8"));
-        String actual = buffer.toString();
+        String actual = buffer.utf8String();
         assertEquals(expected, actual);
     }
 

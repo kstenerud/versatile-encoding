@@ -10,7 +10,7 @@ import static org.junit.Assert.*;
 
 public class BinaryCodecTest {
     @Test
-    public void testLongLength() {
+    public void testLongLength() throws Exception {
         assertEncodeDecode(new BinaryBuffer(10));
         assertEncodeDecode(new BinaryBuffer(100));
         assertEncodeDecode(new BinaryBuffer(1000));
@@ -18,8 +18,15 @@ public class BinaryCodecTest {
         assertEncodeDecode(new BinaryBuffer(100000));
     }
 
+    @Test(expected = BinaryCodec.NoRoomException.class)
+    public void testTooLong() throws Exception {
+        BinaryBuffer buffer = new BinaryBuffer(10);
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(buffer);
+        encoder.writeObject(new byte[100]);
+    }
+
     @Test
-    public void testEncodeDecode() {
+    public void testEncodeDecode() throws Exception {
         assertEncodeDecode((byte)1);
         assertEncodeDecode((short)10000);
         assertEncodeDecode((int)100000000);
@@ -58,7 +65,7 @@ public class BinaryCodecTest {
     }
 
     @Test
-    public void testView() {
+    public void testView() throws Exception {
         BinaryBuffer buffer = new BinaryBuffer(100);
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(buffer);
         encoder.writeObject(1);
@@ -68,7 +75,7 @@ public class BinaryCodecTest {
     }
 
     @Test
-    public void testTruncatedData() {
+    public void testTruncatedData() throws Exception {
         assertDecodeThrowsIllegalState(truncate(encode(new byte[10])));
         assertDecodeThrowsIllegalState(truncate(encode("this is a test")));
         assertDecodeThrowsIllegalState(truncate(encode(Arrays.asList(1, 2, 3))));
@@ -79,20 +86,20 @@ public class BinaryCodecTest {
     }
 
     @Test
-    public void testCoruptedData() {
+    public void testCoruptedData() throws Exception {
         BinaryBuffer buffer = encode(Arrays.asList(1, 2, 3));
         buffer.data[buffer.endOffset-2] = buffer.data[buffer.endOffset-1];
         assertDecodeThrowsIllegalState(buffer);
     }
 
     @Test
-    public void testCoruptedData2() {
+    public void testCoruptedData2() throws Exception {
         BinaryBuffer buffer = encode(Arrays.asList(1, 2, 3));
         buffer.data[0] = buffer.data[buffer.endOffset-1];
         assertDecodeThrowsIllegalState(buffer);
     }
 
-    private BinaryBuffer encode(Object o) {
+    private BinaryBuffer encode(Object o) throws BinaryCodec.NoRoomException {
         BinaryBuffer buffer = new BinaryBuffer(1000000);
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(buffer);
         encoder.writeObject(o);
@@ -122,7 +129,7 @@ public class BinaryCodecTest {
         }
     }
 
-    private void assertEncodeDecode(Object expected) {
+    private void assertEncodeDecode(Object expected) throws BinaryCodec.NoRoomException {
         BinaryBuffer encodedBuffer = encode(expected);
         ObjectHolder holder = new ObjectHolder();
         BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(new BinaryCodec.Decoder.Visitor() {

@@ -39,6 +39,9 @@ public class BinaryCodec {
     public static class EndOfDataException extends IOException {
     }
 
+    public static class NoRoomException extends IOException {
+    }
+
     public static class Encoder {
         private final BinaryBuffer buffer;
         private int currentOffset;
@@ -53,68 +56,77 @@ public class BinaryCodec {
             return buffer.view(buffer.startOffset, currentOffset);
         }
 
-        private int write8(long value) {
-            buffer.data[currentOffset++] = (byte)value;
-            return 1;
+        private int write8(byte value) throws NoRoomException {
+            try {
+                buffer.data[currentOffset++] = value;
+                return 1;
+            } catch(ArrayIndexOutOfBoundsException e) {
+                throw new NoRoomException();
+            }
         }
 
-        private int write16(long value) {
-            byte[] data = buffer.data;
-            data[currentOffset++] = (byte)value;
-            data[currentOffset++] = (byte)(value >> 8);
-            return 2;
+        private int write16(int value) throws NoRoomException {
+            try {
+                int length = LittleEndianCodec.encodeInt16(value, buffer.data, currentOffset);
+                currentOffset += length;
+                return length;
+            } catch(ArrayIndexOutOfBoundsException e) {
+                throw new NoRoomException();
+            }
         }
 
-        private int write32(long value) {
-            byte[] data = buffer.data;
-            data[currentOffset++] = (byte)value;
-            data[currentOffset++] = (byte)(value >> 8);
-            data[currentOffset++] = (byte)(value >> 16);
-            data[currentOffset++] = (byte)(value >> 24);
-            return 4;
+        private int write32(int value) throws NoRoomException {
+            try {
+                int length = LittleEndianCodec.encodeInt32(value, buffer.data, currentOffset);
+                currentOffset += length;
+                return length;
+            } catch(ArrayIndexOutOfBoundsException e) {
+                throw new NoRoomException();
+            }
         }
 
-        private int write64(long value) {
-            byte[] data = buffer.data;
-            data[currentOffset++] = (byte)value;
-            data[currentOffset++] = (byte)(value >> 8);
-            data[currentOffset++] = (byte)(value >> 16);
-            data[currentOffset++] = (byte)(value >> 24);
-            data[currentOffset++] = (byte)(value >> 32);
-            data[currentOffset++] = (byte)(value >> 40);
-            data[currentOffset++] = (byte)(value >> 48);
-            data[currentOffset++] = (byte)(value >> 56);
-            return 8;
+        private int write64(long value) throws NoRoomException {
+            try {
+                int length = LittleEndianCodec.encodeInt64(value, buffer.data, currentOffset);
+                currentOffset += length;
+                return length;
+            } catch(ArrayIndexOutOfBoundsException e) {
+                throw new NoRoomException();
+            }
         }
 
-        private int writeType(byte type) {
+        private int writeType(byte type) throws NoRoomException {
             return write8(type);
         }
 
-        private int writeLength(int length) {
+        private int writeLength(int length) throws NoRoomException {
             return writeInteger(length);
         }
 
-        private int writeBufferContents(@Nonnull byte[] value, int startOffset, int endOffset) {
-            int oldOffset = currentOffset;
-            int length = endOffset - startOffset;
-            writeLength(length);
-            byte[] bufferData = buffer.data;
-            for(int srcI = startOffset; srcI < endOffset; srcI++) {
-                bufferData[currentOffset++] = value[srcI];
+        private int writeBufferContents(@Nonnull byte[] value, int startOffset, int endOffset) throws NoRoomException {
+            try {
+                int oldOffset = currentOffset;
+                int length = endOffset - startOffset;
+                writeLength(length);
+                byte[] bufferData = buffer.data;
+                for (int srcI = startOffset; srcI < endOffset; srcI++) {
+                    bufferData[currentOffset++] = value[srcI];
+                }
+                return currentOffset - oldOffset;
+            } catch(ArrayIndexOutOfBoundsException e) {
+                throw new NoRoomException();
             }
-            return currentOffset - oldOffset;
         }
 
-        private int writeBufferContents(@Nonnull byte[] value) {
+        private int writeBufferContents(@Nonnull byte[] value) throws NoRoomException {
             return writeBufferContents(value, 0, value.length);
         }
 
-        private int writeBufferContents(@Nonnull BinaryBuffer value) {
+        private int writeBufferContents(@Nonnull BinaryBuffer value) throws NoRoomException {
             return writeBufferContents(value.data, value.startOffset, value.endOffset);
         }
 
-        private int startNewPortion(final byte type) {
+        private int startNewPortion(final byte type) throws NoRoomException {
             if(currentPortionType != type) {
                 if(currentPortionType != Types.END_CONTAINER) {
                     throw new IllegalArgumentException("Cannot start new object portion until previous portion has been completed");
@@ -124,7 +136,7 @@ public class BinaryCodec {
             return 0;
         }
 
-        public int writeObject(@Nonnull Object value) {
+        public int writeObject(@Nonnull Object value) throws NoRoomException {
             if(value instanceof Long ||
                     value instanceof Integer ||
                     value instanceof Short ||
@@ -149,19 +161,19 @@ public class BinaryCodec {
             }
         }
 
-        public int writeInteger(long value) {
+        public int writeInteger(long value) throws NoRoomException {
             if(value >= SMALLINT_MIN && value <= SMALLINT_MAX) {
-                return write8(value);
+                return write8((byte)value);
             } else if(value >= INT16_MIN && value <= INT16_MAX) {
-                return writeType(Types.INT16) + write16(value);
+                return writeType(Types.INT16) + write16((short)value);
             } else if(value >= INT32_MIN && value <= INT32_MAX) {
-                return writeType(Types.INT32) + write32(value);
+                return writeType(Types.INT32) + write32((int)value);
             } else {
                 return writeType(Types.INT64) + write64(value);
             }
         }
 
-        public int writeFloat(double value) {
+        public int writeFloat(double value) throws NoRoomException {
             if((float)value == value) {
                 return writeType(Types.FLOAT32) + write32(Float.floatToIntBits((float)value));
             } else {
@@ -169,19 +181,19 @@ public class BinaryCodec {
             }
         }
 
-        public int writeString(@Nonnull String value) {
+        public int writeString(@Nonnull String value) throws NoRoomException {
             return writeType(Types.STRING) + writeBufferContents(stringToBytes(value));
         }
 
-        public int writeBytes(@Nonnull BinaryBuffer value) {
+        public int writeBytes(@Nonnull BinaryBuffer value) throws NoRoomException {
             return writeType(Types.BYTES) + writeBufferContents(value);
         }
 
-        public int writeBytes(@Nonnull byte[] value) {
+        public int writeBytes(@Nonnull byte[] value) throws NoRoomException {
             return writeType(Types.BYTES) + writeBufferContents(value);
         }
 
-        public int writeList(@Nonnull List value) {
+        public int writeList(@Nonnull List value) throws NoRoomException {
             int length = writeType(Types.LIST);
             for(Object o: value) {
                 length += writeObject(o);
@@ -189,7 +201,7 @@ public class BinaryCodec {
             return length + write8(Types.END_CONTAINER);
         }
 
-        public int writeMap(@Nonnull Map<? extends Object, ? extends Object> value) {
+        public int writeMap(@Nonnull Map<? extends Object, ? extends Object> value) throws NoRoomException {
             int length = writeType(Types.MAP);
             for(Map.Entry entry: value.entrySet()) {
                 length += writeObject(entry.getKey());
@@ -199,27 +211,27 @@ public class BinaryCodec {
         }
 
 
-        public int writeStringPortion(@Nonnull String value) {
+        public int writeStringPortion(@Nonnull String value) throws NoRoomException {
             return startNewPortion(Types.STRING) + writeBytes(stringToBytes(value));
         }
 
-        public int writeBytesPortion(@Nonnull BinaryBuffer value) {
+        public int writeBytesPortion(@Nonnull BinaryBuffer value) throws NoRoomException {
             return startNewPortion(Types.BYTES) + writeBytes(value);
         }
 
-        public int writeBytesPortion(@Nonnull byte[] value) {
+        public int writeBytesPortion(@Nonnull byte[] value) throws NoRoomException {
             return startNewPortion(Types.BYTES) + writeBytes(value);
         }
 
-        public int writeListPortion(@Nonnull Object value) {
+        public int writeListPortion(@Nonnull Object value) throws NoRoomException {
             return startNewPortion(Types.LIST) + writeObject(value);
         }
 
-        public int writeMapPortion(@Nonnull Object key, @Nonnull Object value) {
+        public int writeMapPortion(@Nonnull Object key, @Nonnull Object value) throws NoRoomException {
             return startNewPortion(Types.MAP) + writeObject(key) + writeObject(value);
         }
 
-        public int concludeObject() {
+        public int concludeObject() throws NoRoomException {
             currentPortionType = Types.END_CONTAINER;
             return write8(Types.END_CONTAINER);
         }
@@ -387,7 +399,7 @@ public class BinaryCodec {
             }
 
             public @Nonnull String readString() throws EndOfDataException {
-                return readBytes().toString();
+                return readBytes().utf8String();
             }
 
             private @Nonnull Object readObject(boolean isInContainer) throws EndOfDataException {

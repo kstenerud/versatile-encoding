@@ -24,16 +24,37 @@ public class BinaryBuffer {
         this(new byte[length], 0, length);
     }
 
-    public BinaryBuffer view(int startOffset, int endOffsetValue) {
-        return new BinaryBuffer(data, startOffset, endOffsetValue);
+    public BinaryBuffer view(int startOffset, int endOffset) {
+        return new BinaryBuffer(data, startOffset, endOffset);
+    }
+
+    public BinaryBuffer view(int startOffset) {
+        return new BinaryBuffer(data, startOffset, endOffset);
     }
 
     public BinaryBuffer view() {
         return view(startOffset, endOffset);
     }
 
+    private static final char[] HEX_VALUES = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
     @Override
     public @Nonnull String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("[");
+        for(int i = startOffset; i < endOffset; i++) {
+            byte value = data[i];
+            builder.append(HEX_VALUES[(value >> 4) & 0xf]);
+            builder.append(HEX_VALUES[value & 0xf]);
+            if(i < endOffset - 1) {
+                builder.append(", ");
+            }
+        }
+        builder.append("]");
+        return builder.toString();
+    }
+
+    public @Nonnull String utf8String() {
         try {
             return new String(data, startOffset, length, "UTF-8");
         } catch (UnsupportedEncodingException e) {

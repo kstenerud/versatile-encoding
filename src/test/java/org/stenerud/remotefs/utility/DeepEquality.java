@@ -1,4 +1,4 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.utility;
 
 import junit.framework.AssertionFailedError;
 

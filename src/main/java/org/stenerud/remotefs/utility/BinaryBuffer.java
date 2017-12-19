@@ -1,9 +1,9 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.utility;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import java.io.UnsupportedEncodingException;
-import java.util.Arrays;
+import java.util.Objects;
 
 public class BinaryBuffer {
     public final byte[] data;
@@ -107,10 +107,7 @@ public class BinaryBuffer {
 
     @Override
     public int hashCode() {
-        int result = 1;
-        for(int i = startOffset; i < endOffset; i++) {
-            result = 31 * result + data[i];
-        }
+        int result = Objects.hashCode(data);
         result = 31 * result + startOffset;
         result = 31 * result + endOffset;
         return result;

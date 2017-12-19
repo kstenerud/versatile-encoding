@@ -1,6 +1,7 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.utility;
 
 import org.junit.Test;
+import org.stenerud.remotefs.utility.BinaryBuffer;
 
 import static org.junit.Assert.*;
 
@@ -22,6 +23,14 @@ public class BinaryBufferTest {
         String expected = "this is a test";
         BinaryBuffer buffer = new BinaryBuffer(expected.getBytes("UTF-8"));
         String actual = buffer.utf8String();
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    public void testToString() throws Exception {
+        String expected = "[74, 65, 73, 74]";
+        BinaryBuffer buffer = new BinaryBuffer("test".getBytes("UTF-8"));
+        String actual = buffer.toString();
         assertEquals(expected, actual);
     }
 
@@ -49,6 +58,22 @@ public class BinaryBufferTest {
         assertEquals(6, subview.length);
         assertEquals(2, subview.startOffset);
         assertEquals(8, subview.endOffset);
+        for(int i = subview.startOffset; i < subview.endOffset; i++) {
+            assertEquals(0, subview.data[i]);
+        }
+
+        subview.data[subview.startOffset] = 10;
+        assertEquals(subview.data[subview.startOffset], buffer.data[subview.startOffset]);
+    }
+
+    @Test
+    public void testView3() throws Exception {
+        int length = 10;
+        BinaryBuffer buffer = new BinaryBuffer(length);
+        BinaryBuffer subview = buffer.view(2);
+        assertEquals(8, subview.length);
+        assertEquals(2, subview.startOffset);
+        assertEquals(10, subview.endOffset);
         for(int i = subview.startOffset; i < subview.endOffset; i++) {
             assertEquals(0, subview.data[i]);
         }

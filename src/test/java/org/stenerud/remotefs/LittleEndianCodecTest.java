@@ -1,6 +1,8 @@
 package org.stenerud.remotefs;
 
 import org.junit.Test;
+import org.stenerud.remotefs.utility.BinaryBuffer;
+import org.stenerud.remotefs.utility.DeepEquality;
 
 import java.util.HashMap;
 import java.util.Map;

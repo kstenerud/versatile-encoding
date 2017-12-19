@@ -1,133 +1,82 @@
 package org.stenerud.remotefs;
 
+import org.stenerud.remotefs.utility.BinaryBuffer;
+import org.stenerud.remotefs.utility.Parameters;
+import org.stenerud.remotefs.utility.Specification;
+
 import javax.annotation.Nonnull;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 public class MessageCodec {
     public interface Types {
-        public static final byte QUIT      = (byte)0xe0;
-        public static final byte RESOURCE  = (byte)0xc0;
-        public static final byte CALL      = (byte)0xa0;
-        public static final byte ABORT     = (byte)0x80;
-        public static final byte STATUS    = (byte)0x60;
-        public static final byte EXCEPTION = (byte)0x40;
-        public static final byte RESERVED  = (byte)0x20;
+        // request message specs msg
+        int END_SESSION = 0xe0000000;
+        int RESOURCE  = 0xc0000000;
+        int CALL      = 0xa0000000;
+        int ABORT     = 0x80000000; // abort job or resource...
+        int STATUS    = 0x60000000;
+        int EXCEPTION = 0x40000000;
+        int RESERVED1 = 0x20000000;
+        int RESERVED2 = 0x00000000;
     }
-    private static final int TYPE_MASK = (int)0xe0000000;
+    private static final int TYPE_MASK = 0xe0000000;
     private static final int MESSAGE_CONTENTS_OFFSET = 4;
+
+    private final Map<Specification, Integer> specToType = new HashMap<>();
+    private final Map<Integer, Specification> typeToSpec = new HashMap<>();
 
     public static final int MAX_MESSAGE_SIZE = ~TYPE_MASK;
 
-    public static byte getType(int field) {
-        return (byte)(((field & TYPE_MASK) >> 24) & 0xff);
+    private static int getType(int field) {
+        return field & TYPE_MASK;
     }
 
-    public static int getSize(int field) {
+    private static int getSize(int field) {
         return field & MAX_MESSAGE_SIZE;
     }
 
-    private static int combineTypeAndSize(byte messageType, int size) {
-        int field = size & MAX_MESSAGE_SIZE;
-        if(field != size) {
+    private static int combineTypeAndSize(int messageType, int size) {
+        if(getSize(size) != size) {
             throw new IllegalStateException("Message is too long (" + size + "). Max length is " + MAX_MESSAGE_SIZE);
         }
-        return size | (((int)messageType) << 24);
+        return size | messageType;
     }
 
-    public static class Encoder {
-        private final byte messageType;
-        private final BinaryBuffer buffer;
-        private final BinaryCodec.Encoder encoder;
-
-        public Encoder(byte messageType, BinaryBuffer buffer) {
-            this.messageType = messageType;
-            this.buffer = buffer;
-            this.encoder = new BinaryCodec.Encoder(buffer.view(MESSAGE_CONTENTS_OFFSET));
+    public void registerSpecification(@Nonnull Specification spec, int type) {
+        if((type & TYPE_MASK) != type) {
+            throw new IllegalArgumentException("Message type " + type + " is outside of allowed range");
         }
-
-        public int writeObject(@Nonnull Object value) throws BinaryCodec.NoRoomException {
-            return encoder.writeObject(value);
-        }
-
-        public int writeInteger(long value) throws BinaryCodec.NoRoomException {
-            return encoder.writeInteger(value);
-        }
-
-        public int writeFloat(double value) throws BinaryCodec.NoRoomException {
-            return encoder.writeFloat(value);
-        }
-
-        public int writeString(@Nonnull String value) throws BinaryCodec.NoRoomException {
-            return encoder.writeString(value);
-        }
-
-        public int writeBytes(@Nonnull BinaryBuffer value) throws BinaryCodec.NoRoomException {
-            return encoder.writeBytes(value);
-        }
-
-        public int writeBytes(@Nonnull byte[] value) throws BinaryCodec.NoRoomException {
-            return encoder.writeBytes(value);
-        }
-
-        public int writeList(@Nonnull List value) throws BinaryCodec.NoRoomException {
-            return encoder.writeList(value);
-        }
-
-        public int writeMap(@Nonnull Map<?, ?> value) throws BinaryCodec.NoRoomException {
-            return encoder.writeMap(value);
-        }
-
-        public void concludeMessage() {
-            int typeAndSize = combineTypeAndSize(messageType, encoder.view().length);
-            LittleEndianCodec.encodeInt32(typeAndSize, buffer.data, 0);
-        }
+        specToType.put(spec, type);
+        typeToSpec.put(type, spec);
     }
 
-    public static class Decoder {
+    public BinaryBuffer encode(@Nonnull Parameters parameters, @Nonnull BinaryBuffer buffer) throws BinaryCodec.NoRoomException {
+        parameters.verifyCompleteness();
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(buffer.view(MESSAGE_CONTENTS_OFFSET));
 
-        /**
-         * Decode an encoded message.
-         *
-         * @param buffer A buffer containing the complete message.
-         * @return The contents of the message.
-         */
-        public List<Object> decode(BinaryBuffer buffer) {
-            List<Object> list = new LinkedList<>();
-            BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(new BinaryCodec.Decoder.Visitor() {
-                @Override
-                public void onInteger(long value) {
-                    list.add(value);
-                }
-
-                @Override
-                public void onFloat(double value) {
-                    list.add(value);
-                }
-
-                @Override
-                public void onString(@Nonnull String value) {
-                    list.add(value);
-                }
-
-                @Override
-                public void onBytes(@Nonnull BinaryBuffer value) {
-                    list.add(value);
-                }
-
-                @Override
-                public void onList(@Nonnull List value) {
-                    list.add(value);
-                }
-
-                @Override
-                public void onMap(@Nonnull Map<?, ?> value) {
-                    list.add(value);
-                }
-            });
-            decoder.feed(buffer.view(MESSAGE_CONTENTS_OFFSET));
-            return list;
+        for(Object value: parameters) {
+            encoder.writeObject(value);
         }
+
+        int typeAndSize = combineTypeAndSize(specToType.get(parameters.getSpecification()), encoder.view().length);
+        LittleEndianCodec.encodeInt32(typeAndSize, buffer.data, buffer.startOffset);
+        return buffer.view(buffer.startOffset, MESSAGE_CONTENTS_OFFSET + encoder.view().length);
+    }
+
+    public @Nonnull Parameters decode(@Nonnull BinaryBuffer buffer) {
+        int typeAndSize = LittleEndianCodec.decodeInt32(buffer.data, buffer.startOffset);
+        Specification specification = typeToSpec.get(getType(typeAndSize));
+        Parameters parameters = new Parameters(specification);
+        BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(new BinaryCodec.Decoder.Visitor() {
+            @Override
+            public void onValue(Object value) {
+                parameters.add(value);
+            }
+        });
+        decoder.feed(buffer.view(MESSAGE_CONTENTS_OFFSET));
+
+        parameters.verifyCompleteness();
+        return parameters;
     }
 }

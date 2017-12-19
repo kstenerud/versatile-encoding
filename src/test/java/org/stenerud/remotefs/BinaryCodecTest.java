@@ -2,6 +2,9 @@ package org.stenerud.remotefs;
 
 import junit.framework.AssertionFailedError;
 import org.junit.Test;
+import org.stenerud.remotefs.utility.BinaryBuffer;
+import org.stenerud.remotefs.utility.DeepEquality;
+import org.stenerud.remotefs.utility.ObjectHolder;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -16,6 +19,34 @@ public class BinaryCodecTest {
         assertEncodeDecode(new BinaryBuffer(1000));
         assertEncodeDecode(new BinaryBuffer(10000));
         assertEncodeDecode(new BinaryBuffer(100000));
+    }
+
+    @Test
+    public void testWriteTooMany() {
+        assertWriteTooMany(1);
+        assertWriteTooMany(1000);
+        assertWriteTooMany(1000000);
+        assertWriteTooMany(10000000000l);
+        assertWriteTooMany(new byte[2]);
+        assertWriteTooMany("test");
+        assertWriteTooMany(null);
+        assertWriteTooMany(1.0f);
+        assertWriteTooMany(1.010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001);
+        assertWriteTooMany(new LinkedList<>());
+        assertWriteTooMany(new HashMap<>());
+    }
+
+    private void assertWriteTooMany(Object object) {
+        BinaryBuffer buffer = new BinaryBuffer(10);
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(buffer);
+        try {
+            for (int i = 0; i < 1000; i++) {
+                encoder.writeObject(object);
+            }
+            assertTrue("Did not fail writing too many objects", false);
+        } catch(BinaryCodec.NoRoomException e) {
+            // Expected
+        }
     }
 
     @Test(expected = BinaryCodec.NoRoomException.class)
@@ -36,6 +67,7 @@ public class BinaryCodecTest {
         assertEncodeDecode(new byte[100]);
         assertEncodeDecode(new BinaryBuffer(100));
         assertEncodeDecode("test");
+        assertEncodeDecode(null);
 
         List list = new LinkedList();
         list.add((byte)1);
@@ -112,12 +144,7 @@ public class BinaryCodecTest {
 
     private void assertDecodeThrowsIllegalState(BinaryBuffer encoded) {
         BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(new BinaryCodec.Decoder.Visitor() {
-            @Override public void onInteger(long value) {}
-            @Override public void onFloat(double value) {}
-            @Override public void onString(@Nonnull String value) {}
-            @Override public void onBytes(@Nonnull BinaryBuffer value) {}
-            @Override public void onList(@Nonnull List value) {}
-            @Override public void onMap(@Nonnull Map<?, ?> value) {}
+            @Override public void onValue(Object value) {}
         });
 
         try {
@@ -134,32 +161,7 @@ public class BinaryCodecTest {
         ObjectHolder holder = new ObjectHolder();
         BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(new BinaryCodec.Decoder.Visitor() {
             @Override
-            public void onInteger(long value) {
-                holder.object = value;
-            }
-
-            @Override
-            public void onFloat(double value) {
-                holder.object = value;
-            }
-
-            @Override
-            public void onString(@Nonnull String value) {
-                holder.object = value;
-            }
-
-            @Override
-            public void onBytes(@Nonnull BinaryBuffer value) {
-                holder.object = value;
-            }
-
-            @Override
-            public void onList(@Nonnull List value) {
-                holder.object = value;
-            }
-
-            @Override
-            public void onMap(@Nonnull Map<?, ?> value) {
+            public void onValue(Object value) {
                 holder.object = value;
             }
         });

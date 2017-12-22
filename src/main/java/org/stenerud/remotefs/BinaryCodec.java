@@ -45,12 +45,17 @@ public class BinaryCodec {
     }
 
     static class NoRoomException extends IOException {
+        public NoRoomException() {
+        }
+
+        public NoRoomException(Throwable throwable) {
+            super(throwable);
+        }
     }
 
     public static class Encoder {
-        private final BinaryBuffer buffer;
-        private int currentOffset;
-        private byte currentPortionType = Types.END_CONTAINER;
+        protected final BinaryBuffer buffer;
+        protected int currentOffset;
 
         Encoder(@Nonnull BinaryBuffer buffer) {
             this.buffer = buffer;
@@ -58,7 +63,7 @@ public class BinaryCodec {
         }
 
         public @Nonnull BinaryBuffer view() {
-            return buffer.view(buffer.startOffset, currentOffset);
+            return buffer.newView(buffer.startOffset, currentOffset);
         }
 
         private int write8(byte value) throws NoRoomException {
@@ -131,16 +136,6 @@ public class BinaryCodec {
             return writeBufferContents(value.data, value.startOffset, value.endOffset);
         }
 
-//        private int startNewPortion(final byte type) throws NoRoomException {
-//            if(currentPortionType != type) {
-//                if(currentPortionType != Types.END_CONTAINER) {
-//                    throw new IllegalArgumentException("Cannot start new object portion until previous portion has been completed");
-//                }
-//                return write8(type);
-//            }
-//            return 0;
-//        }
-
         public int writeObject(@CheckForNull Object value) throws NoRoomException {
             if(value == null) {
                 return writeEmpty();
@@ -171,23 +166,47 @@ public class BinaryCodec {
             }
         }
 
+        private int writeIntegerSmall(long value) throws NoRoomException {
+            return write8((byte)value);
+        }
+
+        private int writeInteger16(long value) throws NoRoomException {
+            return writeType(Types.INT16) + write16((short)value);
+        }
+
+        private int writeInteger32(long value) throws NoRoomException {
+            return writeType(Types.INT32) + write32((int)value);
+        }
+
+        private int writeInteger64(long value) throws NoRoomException {
+            return writeType(Types.INT64) + write64(value);
+        }
+
         private int writeInteger(long value) throws NoRoomException {
             if(value >= SMALLINT_MIN && value <= SMALLINT_MAX) {
-                return write8((byte)value);
+                return writeIntegerSmall(value);
             } else if(value >= INT16_MIN && value <= INT16_MAX) {
-                return writeType(Types.INT16) + write16((short)value);
+                return writeInteger16(value);
             } else if(value >= INT32_MIN && value <= INT32_MAX) {
-                return writeType(Types.INT32) + write32((int)value);
+                return writeInteger32(value);
             } else {
-                return writeType(Types.INT64) + write64(value);
+                return writeInteger64(value);
             }
+        }
+
+        private int writeFloat32(double value) throws NoRoomException {
+            return writeType(Types.FLOAT32) + write32(Float.floatToIntBits((float)value));
+        }
+
+        private int writeFloat64(double value) throws NoRoomException {
+            return writeType(Types.FLOAT64) + write64(Double.doubleToLongBits(value));
         }
 
         private int writeFloat(double value) throws NoRoomException {
             if((float)value == value) {
-                return writeType(Types.FLOAT32) + write32(Float.floatToIntBits((float)value));
+                return writeFloat32(value);
             } else {
-                return writeType(Types.FLOAT64) + write64(Double.doubleToLongBits(value));
+                return writeFloat64(value);
             }
         }
 
@@ -203,12 +222,16 @@ public class BinaryCodec {
             return writeType(Types.BYTES) + writeBufferContents(value);
         }
 
+        private int writeEndContainer() throws NoRoomException {
+            return writeType(Types.END_CONTAINER);
+        }
+
         private int writeList(@Nonnull List value) throws NoRoomException {
             int length = writeType(Types.LIST);
             for(Object o: value) {
                 length += writeObject(o);
             }
-            return length + writeType(Types.END_CONTAINER);
+            return length + writeEndContainer();
         }
 
         private int writeMap(@Nonnull Map<Object, Object> value) throws NoRoomException {
@@ -217,37 +240,12 @@ public class BinaryCodec {
                 length += writeObject(entry.getKey());
                 length += writeObject(entry.getValue());
             }
-            return length + writeType(Types.END_CONTAINER);
+            return length + writeEndContainer();
         }
 
         private int writeEmpty() throws NoRoomException {
             return writeType(Types.EMPTY);
         }
-
-//        public int writeStringPortion(@Nonnull String value) throws NoRoomException {
-//            return startNewPortion(Types.STRING) + writeBytes(stringToBytes(value));
-//        }
-//
-//        public int writeBytesPortion(@Nonnull BinaryBuffer value) throws NoRoomException {
-//            return startNewPortion(Types.BYTES) + writeBytes(value);
-//        }
-//
-//        public int writeBytesPortion(@Nonnull byte[] value) throws NoRoomException {
-//            return startNewPortion(Types.BYTES) + writeBytes(value);
-//        }
-//
-//        public int writeListPortion(@Nonnull Object value) throws NoRoomException {
-//            return startNewPortion(Types.LIST) + writeObject(value);
-//        }
-//
-//        public int writeMapPortion(@Nonnull Object key, @Nonnull Object value) throws NoRoomException {
-//            return startNewPortion(Types.MAP) + writeObject(key) + writeObject(value);
-//        }
-//
-//        public int concludeObject() throws NoRoomException {
-//            currentPortionType = Types.END_CONTAINER;
-//            return write8(Types.END_CONTAINER);
-//        }
 
         private static @Nonnull byte[] stringToBytes(@Nonnull String string) {
             try {
@@ -257,6 +255,171 @@ public class BinaryCodec {
             }
         }
 
+        public ByteStream newByteStream() throws NoRoomException {
+            return new ByteStream();
+        }
+
+        public ByteStream newStringStream() throws NoRoomException {
+            return new StringStream();
+        }
+
+        public ListStream newListStream() throws NoRoomException {
+            return new ListStream();
+        }
+
+        public MapStream newMapStream() throws NoRoomException {
+            return new MapStream();
+        }
+
+        public class ListStream {
+            private final Encoder encoder;
+
+            private ListStream() throws NoRoomException {
+                writeType(Types.LIST);
+                // Leave room for "end container" marker
+                this.encoder = new Encoder(buffer.newView(currentOffset, buffer.endOffset-1));
+            }
+
+            public void write(@Nonnull Object value) throws NoRoomException {
+                encoder.writeObject(value);
+                currentOffset = encoder.currentOffset;
+            }
+
+            public void close() {
+                try {
+                    writeEndContainer();
+                } catch(NoRoomException e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+        }
+
+        public class MapStream {
+            private final Encoder encoder;
+
+            private MapStream() throws NoRoomException {
+                writeType(Types.MAP);
+                // Leave room for "end container" marker
+                this.encoder = new Encoder(buffer.newView(currentOffset, buffer.endOffset-1));
+            }
+
+            public void write(@Nonnull Object key, @Nonnull Object value) throws NoRoomException {
+                encoder.writeObject(key);
+                encoder.writeObject(value);
+                currentOffset = encoder.currentOffset;
+            }
+
+            public void close() {
+                try {
+                    writeEndContainer();
+                } catch(NoRoomException e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+        }
+
+        public class StringStream extends ByteStream {
+            private final byte MULTIBYTE_MASK = (byte)0x80;
+            private final byte MULTIBYTE_INITIATOR_MASK = (byte)0xc0;
+            private final byte TWO_BYTE_MASK = (byte)0xe0;
+            private final byte TWO_BYTE_MATCH = (byte)0xc0;
+            private final byte THREE_BYTE_MASK = (byte)0xf0;
+            private final byte THREE_BYTE_MATCH = (byte)0xe0;
+            private final byte FOUR_BYTE_MASK = (byte)0xf8;
+            private final byte FOUR_BYTE_MATCH = (byte)0xf0;
+
+            private StringStream() throws NoRoomException {
+                super(Types.STRING);
+            }
+
+            private int offsetToLastFullUTF8Character() {
+                // Regular character
+                if(viewOffset == view.startOffset || (view.data[viewOffset-1] & MULTIBYTE_MASK) == 0) {
+                    return viewOffset;
+                }
+
+                for(int i = -1; i >= -4; i--) {
+                    byte currentByte = view.data[i + viewOffset];
+                    if((currentByte & MULTIBYTE_INITIATOR_MASK) == MULTIBYTE_INITIATOR_MASK) {
+                        int multibyteCount = -i;
+                        int expectedMultibyteCount;
+                        if((currentByte & TWO_BYTE_MASK) == TWO_BYTE_MATCH) {
+                            expectedMultibyteCount = 2;
+                        } else if((currentByte & THREE_BYTE_MASK) == THREE_BYTE_MATCH) {
+                            expectedMultibyteCount = 3;
+                        } else if((currentByte & FOUR_BYTE_MASK) == FOUR_BYTE_MATCH) {
+                            expectedMultibyteCount = 4;
+                        } else {
+                            throw new IllegalStateException("Malformed UTF-8 character");
+                        }
+                        if(multibyteCount == expectedMultibyteCount) {
+                            return viewOffset;
+                        }
+                        if(multibyteCount < expectedMultibyteCount) {
+                            return viewOffset - multibyteCount;
+                        }
+                        throw new IllegalStateException("Malformed UTF-8 character");
+                    }
+                }
+                throw new IllegalStateException("Malformed UTF-8 character");
+            }
+
+            public int write(@Nonnull BinaryBuffer fromBuffer) {
+                int beforeOffset = viewOffset;
+                int bytesWritten = super.write(fromBuffer);
+                if(bytesWritten < fromBuffer.length) {
+                    viewOffset = offsetToLastFullUTF8Character();
+                }
+                return viewOffset - beforeOffset;
+            }
+        }
+
+        public class ByteStream {
+            // type BYTES, type INT32, 32-bit length
+            protected final int typeAndLengthOffset = 6;
+            protected final BinaryBuffer view;
+            protected int viewOffset;
+
+            private ByteStream() throws NoRoomException {
+                this(Types.BYTES);
+            }
+
+            private ByteStream(byte type) throws NoRoomException {
+                writeType(type);
+                try {
+                    // TODO: Optimization: Choose int size based on buffer length
+                    this.view = buffer.newView(buffer.startOffset + typeAndLengthOffset);
+                    this.viewOffset = this.view.startOffset;
+                } catch(IndexOutOfBoundsException e) {
+                    throw new NoRoomException(e);
+                }
+            }
+
+            public int write(@Nonnull BinaryBuffer fromBuffer) {
+                int bytesAdded;
+                try {
+                    view.copyFrom(fromBuffer, fromBuffer.startOffset, viewOffset, fromBuffer.length);
+                    bytesAdded = fromBuffer.length;
+                } catch(IndexOutOfBoundsException e) {
+                    bytesAdded = view.lengthRemainingFromOffset(viewOffset);
+                    if(bytesAdded <= 0) {
+                        return 0;
+                    }
+                    view.copyFrom(fromBuffer, fromBuffer.startOffset, viewOffset, bytesAdded);
+                }
+                viewOffset += bytesAdded;
+                return bytesAdded;
+            }
+
+            public void close() {
+                try {
+                    writeInteger32(view.lengthToOffset(viewOffset));
+                    currentOffset = viewOffset;
+                } catch(NoRoomException e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+        }
     }
 
     public static class Decoder {
@@ -278,13 +441,13 @@ public class BinaryCodec {
                     Object value;
                     switch (type) {
                         case Types.INT16:
-                            value = (long) (short) reader.readInteger(2);
+                            value = reader.readInt16();
                             break;
                         case Types.INT32:
-                            value = (long) (int) reader.readInteger(4);
+                            value = reader.readInt32();
                             break;
                         case Types.INT64:
-                            value = reader.readInteger(8);
+                            value = reader.readInt64();
                             break;
                         case Types.FLOAT32:
                             value = reader.readFloat32();
@@ -335,33 +498,44 @@ public class BinaryCodec {
             }
 
             byte readType() throws EndOfDataException {
+                return readInt8();
+            }
+
+            byte readInt8() throws EndOfDataException {
                 checkCanReadBytes(1);
                 return buffer.data[currentOffset++];
             }
 
-            long readInteger(int byteCount) throws EndOfDataException {
-                checkCanReadBytes(byteCount);
-                int lowOffset = currentOffset;
-                int currentOffset = this.currentOffset + byteCount;
-                byte[] src = buffer.data;
-                long accumulator = src[currentOffset--]; // preserve sign
-                for(; currentOffset >= lowOffset; currentOffset--) {
-                    accumulator <<= 8;
-                    accumulator += 0xff & src[currentOffset];
-                }
-                this.currentOffset += byteCount;
-                return accumulator;
+            long readInt16() throws EndOfDataException {
+                checkCanReadBytes(2);
+                long result = LittleEndianCodec.decodeInt16(buffer.data, currentOffset);
+                currentOffset += 2;
+                return result;
+            }
+
+            long readInt32() throws EndOfDataException {
+                checkCanReadBytes(4);
+                long result = LittleEndianCodec.decodeInt32(buffer.data, currentOffset);
+                currentOffset += 4;
+                return result;
+            }
+
+            long readInt64() throws EndOfDataException {
+                checkCanReadBytes(8);
+                long result = LittleEndianCodec.decodeInt64(buffer.data, currentOffset);
+                currentOffset += 8;
+                return result;
             }
 
             long readInteger() throws EndOfDataException {
                 byte type = readType();
                 switch(type) {
                     case Types.INT16:
-                        return readInteger(2);
+                        return readInt16();
                     case Types.INT32:
-                        return readInteger(4);
+                        return readInt32();
                     case Types.INT64:
-                        return readInteger(8);
+                        return readInt64();
                     case Types.FLOAT32:
                     case Types.FLOAT64:
                     case Types.EMPTY:
@@ -377,13 +551,11 @@ public class BinaryCodec {
             }
 
             double readFloat32() throws EndOfDataException {
-                int intBits = (int)readInteger(4);
-                return Float.intBitsToFloat(intBits);
+                return Float.intBitsToFloat((int)readInt32());
             }
 
             double readFloat64() throws EndOfDataException {
-                long longBits = readInteger(8);
-                return Double.longBitsToDouble(longBits);
+                return Double.longBitsToDouble(readInt64());
             }
 
             int readLength() throws EndOfDataException {
@@ -409,7 +581,7 @@ public class BinaryCodec {
                 int length = readAndVerifyByteArrayLength();
                 int startOffst = currentOffset;
                 currentOffset += length;
-                return buffer.view(startOffst, currentOffset);
+                return buffer.newView(startOffst, currentOffset);
             }
 
             @Nonnull String readString() throws EndOfDataException {
@@ -420,11 +592,11 @@ public class BinaryCodec {
                 byte type = readType();
                 switch (type) {
                     case Types.INT16:
-                        return (long) (short) readInteger(2);
+                        return readInt16();
                     case Types.INT32:
-                        return (long) (int) readInteger(4);
+                        return readInt32();
                     case Types.INT64:
-                        return readInteger(8);
+                        return readInt64();
                     case Types.FLOAT32:
                         return readFloat32();
                     case Types.FLOAT64:

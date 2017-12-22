@@ -1,7 +1,6 @@
 package org.stenerud.remotefs.utility;
 
 import org.junit.Test;
-import org.stenerud.remotefs.utility.BinaryBuffer;
 
 import static org.junit.Assert.*;
 
@@ -15,6 +14,111 @@ public class BinaryBufferTest {
         assertEquals(length, buffer.endOffset);
         for(int i = 0; i < length; i++) {
             assertEquals(0, buffer.data[i]);
+        }
+    }
+
+    @Test
+    public void testLengthRemainingFromOffset() {
+        BinaryBuffer buffer = new BinaryBuffer(4);
+        assertEquals(4, buffer.lengthRemainingFromOffset(0));
+        assertEquals(3, buffer.lengthRemainingFromOffset(1));
+        assertEquals(2, buffer.lengthRemainingFromOffset(2));
+        assertEquals(1, buffer.lengthRemainingFromOffset(3));
+        assertEquals(0, buffer.lengthRemainingFromOffset(4));
+        assertEquals(-1, buffer.lengthRemainingFromOffset(5));
+
+        BinaryBuffer view = buffer.newView(1, 3);
+        assertEquals(2, view.lengthRemainingFromOffset(1));
+        assertEquals(1, view.lengthRemainingFromOffset(2));
+        assertEquals(0, view.lengthRemainingFromOffset(3));
+        assertEquals(-1, view.lengthRemainingFromOffset(4));
+    }
+
+    @Test
+    public void testLengthToOffset() {
+        BinaryBuffer buffer = new BinaryBuffer(4);
+        assertEquals(0, buffer.lengthToOffset(0));
+        assertEquals(1, buffer.lengthToOffset(1));
+        assertEquals(2, buffer.lengthToOffset(2));
+        assertEquals(3, buffer.lengthToOffset(3));
+        assertEquals(4, buffer.lengthToOffset(4));
+
+        BinaryBuffer view = buffer.newView(1, 3);
+        assertEquals(0, view.lengthToOffset(1));
+        assertEquals(1, view.lengthToOffset(2));
+        assertEquals(2, view.lengthToOffset(3));
+    }
+
+    @Test
+    public void testCopyFrom() {
+        BinaryBuffer buffer1 = new BinaryBuffer(10);
+        buffer1.data[0] = 1;
+        buffer1.data[1] = 2;
+        buffer1.data[2] = 3;
+        BinaryBuffer buffer2 = new BinaryBuffer(5);
+        buffer2.copyFrom(buffer1, 0, 1, 3);
+        assertEquals(0, buffer2.data[0]);
+        assertEquals(1, buffer2.data[1]);
+        assertEquals(2, buffer2.data[2]);
+        assertEquals(3, buffer2.data[3]);
+        assertEquals(0, buffer2.data[4]);
+
+        assertIsBadCopyFromParameters(buffer1, 0, buffer2, 0, 100);
+        assertIsBadCopyFromParameters(buffer1, 0, buffer2, 0, 6);
+        assertIsBadCopyFromParameters(buffer1, -1, buffer2, 0, 1);
+        assertIsBadCopyFromParameters(buffer1, 10, buffer2, 0, 1);
+        assertIsBadCopyFromParameters(buffer1, 3, buffer2, 3, 4);
+
+        assertIsBadCopyFromParameters(buffer1.data, 0, buffer2, 0, 100);
+        assertIsBadCopyFromParameters(buffer1.data, 0, buffer2, 0, 6);
+        assertIsBadCopyFromParameters(buffer1.data, -1, buffer2, 0, 1);
+        assertIsBadCopyFromParameters(buffer1.data, 10, buffer2, 0, 1);
+        assertIsBadCopyFromParameters(buffer1.data, 3, buffer2, 3, 4);
+    }
+
+    @Test
+    public void testBadConstructors() {
+        byte[] data = new byte[10];
+        assertIsBadConstructorParams(data, -1, 10);
+        assertIsBadConstructorParams(data, 0, -1);
+        assertIsBadConstructorParams(data, 1, 0);
+        assertIsBadConstructorParams(data, 0, 11);
+        assertIsBadConstructorParams(data, 11, 10);
+    }
+
+    private void assertIsBadConstructorParams(byte[] data, int startOffset, int endOffset) {
+        try {
+            new BinaryBuffer(data, startOffset, endOffset);
+            assertTrue("Should have thrown", false);
+        } catch(IndexOutOfBoundsException e) {
+            // Do nothing
+        }
+    }
+
+    private void assertIsBadCopyFromParameters(BinaryBuffer fromBuffer, int fromOffset, BinaryBuffer toBuffer, int toOffset, int length) {
+        try {
+            toBuffer.copyFrom(fromBuffer, fromOffset, toOffset, length);
+            assertTrue("Should have thrown", false);
+        } catch(IndexOutOfBoundsException e) {
+            // Do nothing
+        }
+    }
+
+    private void assertIsBadCopyFromParameters(byte[] fromData, int fromOffset, BinaryBuffer toBuffer, int toOffset, int length) {
+        try {
+            toBuffer.copyFrom(fromData, fromOffset, toOffset, length);
+            assertTrue("Should have thrown", false);
+        } catch(IndexOutOfBoundsException e) {
+            // Do nothing
+        }
+    }
+
+    private void assertIsBadViewParameters(BinaryBuffer buffer, int startOffset, int endOffset) {
+        try {
+            buffer.newView(startOffset, endOffset);
+            assertTrue("Should have thrown", false);
+        } catch(IndexOutOfBoundsException e) {
+            // Do nothing
         }
     }
 
@@ -38,7 +142,7 @@ public class BinaryBufferTest {
     public void testView() throws Exception {
         int length = 10;
         BinaryBuffer buffer = new BinaryBuffer(length);
-        BinaryBuffer subview = buffer.view();
+        BinaryBuffer subview = buffer.newView();
         assertEquals(10, subview.length);
         assertEquals(0, subview.startOffset);
         assertEquals(10, subview.endOffset);
@@ -54,7 +158,7 @@ public class BinaryBufferTest {
     public void testView2() throws Exception {
         int length = 10;
         BinaryBuffer buffer = new BinaryBuffer(length);
-        BinaryBuffer subview = buffer.view(2, 8);
+        BinaryBuffer subview = buffer.newView(2, 8);
         assertEquals(6, subview.length);
         assertEquals(2, subview.startOffset);
         assertEquals(8, subview.endOffset);
@@ -70,7 +174,7 @@ public class BinaryBufferTest {
     public void testView3() throws Exception {
         int length = 10;
         BinaryBuffer buffer = new BinaryBuffer(length);
-        BinaryBuffer subview = buffer.view(2);
+        BinaryBuffer subview = buffer.newView(2);
         assertEquals(8, subview.length);
         assertEquals(2, subview.startOffset);
         assertEquals(10, subview.endOffset);
@@ -83,10 +187,25 @@ public class BinaryBufferTest {
     }
 
     @Test
+    public void testView4() throws Exception {
+        BinaryBuffer buffer = new BinaryBuffer(100);
+        BinaryBuffer view = buffer.newView(15, 30);
+        assertIsBadViewParameters(buffer, 0, 101);
+        assertIsBadViewParameters(buffer, -1, 100);
+        assertIsBadViewParameters(view, 0, 100);
+        assertIsBadViewParameters(view, 14, 17);
+        assertIsBadViewParameters(view, 15, 31);
+        view.newView(15, 30);
+        BinaryBuffer subview = view.newView(20, 20);
+        assertIsBadViewParameters(subview, 20, 21);
+        assertIsBadViewParameters(subview, 19, 20);
+    }
+
+    @Test
     public void testCopy() throws Exception {
         int length = 10;
         BinaryBuffer buffer = new BinaryBuffer(length);
-        BinaryBuffer subcopy = buffer.copy();
+        BinaryBuffer subcopy = buffer.newCopy();
         assertEquals(10, subcopy.length);
         assertEquals(0, subcopy.startOffset);
         assertEquals(10, subcopy.endOffset);
@@ -105,7 +224,7 @@ public class BinaryBufferTest {
     public void testCopy2() throws Exception {
         int length = 10;
         BinaryBuffer buffer = new BinaryBuffer(length);
-        BinaryBuffer subcopy = buffer.copy(2, 8);
+        BinaryBuffer subcopy = buffer.newCopy(2, 8);
         assertEquals(6, subcopy.length);
         assertEquals(0, subcopy.startOffset);
         assertEquals(6, subcopy.endOffset);
@@ -125,8 +244,8 @@ public class BinaryBufferTest {
         BinaryBuffer buffer = new BinaryBuffer(1);
         BinaryBuffer bufferEq = new BinaryBuffer(new byte[1]);
         BinaryBuffer bufferEq2 = new BinaryBuffer(new byte[10], 2, 3);
-        BinaryBuffer bufferEq3 = buffer.view();
-        BinaryBuffer bufferEq4 = buffer.copy();
+        BinaryBuffer bufferEq3 = buffer.newView();
+        BinaryBuffer bufferEq4 = buffer.newCopy();
         BinaryBuffer bufferNeq = new BinaryBuffer(new byte[1]);
         bufferNeq.data[bufferNeq.startOffset] = 10;
         BinaryBuffer bufferNeq2 = new BinaryBuffer(new byte[10], 2, 3);

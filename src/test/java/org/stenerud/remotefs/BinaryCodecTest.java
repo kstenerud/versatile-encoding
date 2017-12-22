@@ -6,7 +6,7 @@ import org.stenerud.remotefs.utility.BinaryBuffer;
 import org.stenerud.remotefs.utility.DeepEquality;
 import org.stenerud.remotefs.utility.ObjectHolder;
 
-import javax.annotation.Nonnull;
+import java.nio.ByteBuffer;
 import java.util.*;
 
 import static org.junit.Assert.*;
@@ -14,11 +14,152 @@ import static org.junit.Assert.*;
 public class BinaryCodecTest {
     @Test
     public void testLongLength() throws Exception {
-        assertEncodeDecode(new BinaryBuffer(10));
-        assertEncodeDecode(new BinaryBuffer(100));
+//        assertEncodeDecode(new BinaryBuffer(10));
+//        assertEncodeDecode(new BinaryBuffer(100));
         assertEncodeDecode(new BinaryBuffer(1000));
         assertEncodeDecode(new BinaryBuffer(10000));
         assertEncodeDecode(new BinaryBuffer(100000));
+    }
+
+    static final int BYTES_PROTOCOL_OVERHEAD = 6;
+
+    @Test
+    public void testStringStreamCutoff() throws Exception {
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 0, "", "");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 100, "", "");
+
+        // 2-byte
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 5, "straße", "stra");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 6, "straße", "straß");
+
+        // 3-byte
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 14, "これはマルチバイトです", "これはマ");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 15, "これはマルチバイトです", "これはマル");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 16, "これはマルチバイトです", "これはマル");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 17, "これはマルチバイトです", "これはマル");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 18, "これはマルチバイトです", "これはマルチ");
+
+        // 4-byte
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 4, "𩶘𩶘", "𩶘");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 5, "𩶘𩶘", "𩶘");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 6, "𩶘𩶘", "𩶘");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 7, "𩶘𩶘", "𩶘");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 8, "𩶘𩶘", "𩶘𩶘");
+
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 0, "これはマルチバイトです", "");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 1, "これはマルチバイトです", "");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 2, "これはマルチバイトです", "");
+    }
+
+    private void assertStringStreamCutoff(int bufferLength, String input, String expected) throws Exception {
+        BinaryBuffer encoded = new BinaryBuffer(bufferLength);
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
+        BinaryCodec.Encoder.ByteStream stream = encoder.newStringStream();
+        stream.write(new BinaryBuffer(input.getBytes("UTF-8")));
+        stream.close();
+        String actual = decodeSingleObject(encoder.view(), String.class);
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    public void testStringStreamMultibyte() throws Exception {
+        BinaryBuffer encoded = new BinaryBuffer(100);
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
+        BinaryCodec.Encoder.ByteStream stream = encoder.newStringStream();
+        stream.write(new BinaryBuffer("これは".getBytes("UTF-8")));
+        stream.write(new BinaryBuffer("マルチバイトです".getBytes("UTF-8")));
+        stream.close();
+        String result = decodeSingleObject(encoder.view(), String.class);
+        String expected = "これはマルチバイトです";
+        assertEquals(expected, result);
+    }
+
+    @Test
+    public void testStringStream() throws Exception {
+        BinaryBuffer encoded = new BinaryBuffer(100);
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
+        BinaryCodec.Encoder.ByteStream stream = encoder.newStringStream();
+        stream.write(new BinaryBuffer("hello".getBytes("UTF-8")));
+        stream.write(new BinaryBuffer(" world".getBytes("UTF-8")));
+        stream.close();
+        String result = decodeSingleObject(encoder.view(), String.class);
+        String expected = "hello world";
+        assertEquals(expected, result);
+    }
+
+    @Test
+    public void testStreamBytes() throws Exception {
+        assertStreamBufferToBuffer(5, 100, 12, 18);
+        assertStreamBufferToBuffer(0, 100, 0, 6);
+        assertStreamBufferToBuffer(0, 100, 0, 16);
+        assertStreamBufferToBuffer(0, 100, 0, 7);
+        assertStreamBufferToBuffer(5, 10, 12, 100);
+        assertStreamBufferToBufferThrows(0, 100, 0, 5);
+        assertStreamBufferToBufferThrows(0, 100, 10, 15);
+    }
+
+    private void assertStreamBufferToBufferThrows(int srcStartOffset, int srcEndOffset, int dstStartOffset, int dstEndOffset) throws BinaryCodec.NoRoomException {
+        try {
+            assertStreamBufferToBuffer(srcStartOffset, srcEndOffset, dstStartOffset, dstEndOffset);
+            assertTrue("Should have thrown", false);
+        } catch(BinaryCodec.NoRoomException e) {
+            // Expected
+        }
+    }
+
+    private void assertStreamBufferToBuffer(int srcStartOffset, int srcEndOffset, int dstStartOffset, int dstEndOffset) throws BinaryCodec.NoRoomException {
+        BinaryBuffer src = new BinaryBuffer(srcEndOffset+100).newView(srcStartOffset, srcEndOffset);
+        BinaryBuffer dst = new BinaryBuffer(dstEndOffset+100).newView(dstStartOffset, dstEndOffset);
+        fillWithSequentialData(src);
+        BinaryBuffer encoded = streamBufferToBuffer(src, dst);
+        BinaryBuffer result = decodeSingleObject(encoded, BinaryBuffer.class);
+        BinaryBuffer expected = createExpectedView(src, dst.length - BYTES_PROTOCOL_OVERHEAD);
+        assertEquals(expected, result);
+    }
+
+    private BinaryBuffer createExpectedView(BinaryBuffer src, int length) {
+        BinaryBuffer expected = new BinaryBuffer(length);
+        int offset = 0;
+        while(offset < expected.endOffset) {
+            int copyLength = Math.min(Math.min(length, src.length), expected.lengthRemainingFromOffset(offset));
+            expected.copyFrom(src, src.startOffset, offset, copyLength);
+            offset += copyLength;
+        }
+        return expected;
+    }
+
+    private BinaryBuffer streamBufferToBuffer(BinaryBuffer src, BinaryBuffer dst) throws BinaryCodec.NoRoomException {
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(dst);
+        BinaryCodec.Encoder.ByteStream stream = encoder.newByteStream();
+        while(stream.write(src) > 0) {
+        }
+        stream.close();
+        return encoder.view();
+    }
+
+    private <T> T decodeSingleObject(BinaryBuffer buffer, Class<T> cls) {
+        final ObjectHolder holder = new ObjectHolder();
+        BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(new BinaryCodec.Decoder.Visitor() {
+            @Override
+            public void onValue(Object value) {
+                holder.object = value;
+            }
+        });
+        decoder.feed(buffer);
+        return (T)holder.object;
+    }
+
+    private void fillWithSequentialData(BinaryBuffer buffer) {
+        int offset = buffer.startOffset;
+        try {
+            for (; ; ) {
+                for (int i = 0; i < 127; i++) {
+                    buffer.data[offset++] = (byte)i;
+                }
+            }
+        } catch(IndexOutOfBoundsException e) {
+            // Ignored
+        }
     }
 
     @Test
@@ -67,6 +208,8 @@ public class BinaryCodecTest {
         assertEncodeDecode(new byte[100]);
         assertEncodeDecode(new BinaryBuffer(100));
         assertEncodeDecode("test");
+        assertEncodeDecode("");
+        assertEncodeDecode(new byte[0]);
         assertEncodeDecode(null);
 
         List list = new LinkedList();
@@ -102,7 +245,7 @@ public class BinaryCodecTest {
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(buffer);
         encoder.writeObject(1);
         BinaryBuffer view = encoder.view();
-        BinaryBuffer expected = buffer.view(0, view.endOffset);
+        BinaryBuffer expected = buffer.newView(0, view.endOffset);
         assertEquals(expected, view);
     }
 
@@ -139,16 +282,12 @@ public class BinaryCodecTest {
     }
 
     private BinaryBuffer truncate(BinaryBuffer buffer) {
-        return buffer.view(buffer.startOffset, buffer.endOffset-1);
+        return buffer.newView(buffer.startOffset, buffer.endOffset-1);
     }
 
-    private void assertDecodeThrowsIllegalState(BinaryBuffer encoded) {
-        BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(new BinaryCodec.Decoder.Visitor() {
-            @Override public void onValue(Object value) {}
-        });
-
+    private void assertDecodeThrowsIllegalState(BinaryBuffer encodedBuffer) {
         try {
-            decoder.feed(encoded);
+            decodeSingleObject(encodedBuffer, Object.class);
             throw new AssertionFailedError("Should have caused IllegalStateException");
         } catch(IllegalStateException e) {
             // Expected
@@ -158,18 +297,10 @@ public class BinaryCodecTest {
 
     private void assertEncodeDecode(Object expected) throws BinaryCodec.NoRoomException {
         BinaryBuffer encodedBuffer = encode(expected);
-        ObjectHolder holder = new ObjectHolder();
-        BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(new BinaryCodec.Decoder.Visitor() {
-            @Override
-            public void onValue(Object value) {
-                holder.object = value;
-            }
-        });
-        decoder.feed(encodedBuffer);
-
+        Object actual = decodeSingleObject(encodedBuffer, Object.class);
         if(expected instanceof byte[]) {
             expected = new BinaryBuffer((byte[])expected);
         }
-        DeepEquality.assertEquals(expected, holder.object);
+        DeepEquality.assertEquals(expected, actual);
     }
 }

@@ -8,6 +8,17 @@ import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 
+// Length + type encoding:
+// first 3 bits: message type
+// remaining bits: length
+// when top bit set, read next byte for next lower part of length
+// repeat
+// T = type encoding, X = extension bit, S = size data bit
+// TTTXSSSS 4 = 15
+// XSSSSSSS 11 = 2K
+// XSSSSSSS 18 = 256K
+// XSSSSSSS 25 = 512M
+// XSSSSSSS 32 = 4G
 public class MessageCodec {
     public interface Types {
         // request message specs msg
@@ -53,7 +64,7 @@ public class MessageCodec {
 
     public BinaryBuffer encode(@Nonnull Parameters parameters, @Nonnull BinaryBuffer buffer) throws BinaryCodec.NoRoomException {
         parameters.verifyCompleteness();
-        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(buffer.view(MESSAGE_CONTENTS_OFFSET));
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(buffer.newView(MESSAGE_CONTENTS_OFFSET));
 
         for(Object value: parameters) {
             encoder.writeObject(value);
@@ -61,7 +72,7 @@ public class MessageCodec {
 
         int typeAndSize = combineTypeAndSize(specToType.get(parameters.getSpecification()), encoder.view().length);
         LittleEndianCodec.encodeInt32(typeAndSize, buffer.data, buffer.startOffset);
-        return buffer.view(buffer.startOffset, MESSAGE_CONTENTS_OFFSET + encoder.view().length);
+        return buffer.newView(buffer.startOffset, MESSAGE_CONTENTS_OFFSET + encoder.view().length);
     }
 
     public @Nonnull Parameters decode(@Nonnull BinaryBuffer buffer) {
@@ -74,7 +85,7 @@ public class MessageCodec {
                 parameters.add(value);
             }
         });
-        decoder.feed(buffer.view(MESSAGE_CONTENTS_OFFSET));
+        decoder.feed(buffer.newView(MESSAGE_CONTENTS_OFFSET));
 
         parameters.verifyCompleteness();
         return parameters;

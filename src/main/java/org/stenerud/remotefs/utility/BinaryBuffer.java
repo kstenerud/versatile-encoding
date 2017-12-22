@@ -3,6 +3,7 @@ package org.stenerud.remotefs.utility;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.Objects;
 
 public class BinaryBuffer {
@@ -12,6 +13,15 @@ public class BinaryBuffer {
     public final int length;
 
     public BinaryBuffer(@Nonnull byte[] data, int startOffset, int endOffset) {
+        if(startOffset < 0) {
+            throw new IndexOutOfBoundsException("Start offset " + startOffset + " is less than 0");
+        }
+        if(startOffset > endOffset) {
+            throw new IndexOutOfBoundsException("Start offset " + startOffset + " is greater than end offset " + endOffset);
+        }
+        if(endOffset > data.length) {
+            throw new IndexOutOfBoundsException("End offset " + endOffset + " is greater than data length " + data.length);
+        }
         this.data = data;
         this.startOffset = startOffset;
         this.endOffset = endOffset;
@@ -26,16 +36,33 @@ public class BinaryBuffer {
         this(new byte[length], 0, length);
     }
 
-    public @Nonnull BinaryBuffer view(int startOffset, int endOffset) {
+    public @Nonnull BinaryBuffer newCopy() {
+        return newCopy(startOffset, endOffset);
+    }
+
+    public @Nonnull BinaryBuffer newCopy(int startOffset, int endOffset) {
+        int length = endOffset - startOffset;
+        BinaryBuffer newBuffer = new BinaryBuffer(length);
+        newBuffer.copyFrom(this, startOffset, newBuffer.startOffset, length);
+        return newBuffer;
+    }
+
+    public @Nonnull BinaryBuffer newView(int startOffset, int endOffset) {
+        if(startOffset < this.startOffset) {
+            throw new IndexOutOfBoundsException("New start offset " + startOffset + " is less than existing start offset " + this.startOffset);
+        }
+        if(endOffset > this.endOffset) {
+            throw new IndexOutOfBoundsException("New end offset " + endOffset + " is greater than existing end offset " + this.endOffset);
+        }
         return new BinaryBuffer(data, startOffset, endOffset);
     }
 
-    public @Nonnull BinaryBuffer view(int startOffset) {
-        return new BinaryBuffer(data, startOffset, endOffset);
+    public @Nonnull BinaryBuffer newView(int startOffset) {
+        return newView(startOffset, endOffset);
     }
 
-    public @Nonnull BinaryBuffer view() {
-        return view(startOffset, endOffset);
+    public @Nonnull BinaryBuffer newView() {
+        return newView(startOffset, endOffset);
     }
 
     private static final char[] HEX_VALUES = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
@@ -64,19 +91,34 @@ public class BinaryBuffer {
         }
     }
 
-    public @Nonnull BinaryBuffer copy() {
-        return copy(startOffset, endOffset);
+    public int lengthToOffset(int offset) {
+        return offset - startOffset;
     }
 
-    public @Nonnull BinaryBuffer copy(int startOffset, int endOffset) {
-        int length = endOffset - startOffset;
-        BinaryBuffer newBuffer = new BinaryBuffer(length);
-        int si = startOffset;
-        int di = 0;
-        while(si < endOffset) {
-            newBuffer.data[di++] = data[si++];
+    public int lengthRemainingFromOffset(int offset) {
+        return endOffset - offset;
+    }
+
+    public void copyFrom(BinaryBuffer them, int themStartOffset, int thisStartOffset, int length) {
+        if(themStartOffset + length > them.endOffset) {
+            throw new IndexOutOfBoundsException("Source start offset " + themStartOffset + " + length " + length + " is beyond end offset " + them.endOffset);
         }
-        return newBuffer;
+        copyFrom(them.data, themStartOffset, thisStartOffset, length);
+    }
+
+    public void copyFrom(byte[] srcData, int srcDataStartOffset, int thisStartOffset, int length) {
+        if(srcDataStartOffset + length > srcData.length) {
+            throw new IndexOutOfBoundsException("Source start offset " + srcDataStartOffset + " + length " + length + " is beyond buffer length " + srcData.length);
+        }
+        if(lengthRemainingFromOffset(thisStartOffset) < length) {
+            throw new IndexOutOfBoundsException("Dst start offset " + thisStartOffset + " + length " + length + " is beyond end offset " + endOffset);
+        }
+        int di = thisStartOffset;
+        int dEnd = di + length;
+        int si = srcDataStartOffset;
+        while(di < dEnd) {
+            data[di++] = srcData[si++];
+        }
     }
 
     @Override
@@ -107,9 +149,10 @@ public class BinaryBuffer {
 
     @Override
     public int hashCode() {
-        int result = Objects.hashCode(data);
-        result = 31 * result + startOffset;
-        result = 31 * result + endOffset;
+        int result = Objects.hash(startOffset, length);
+        for(int offset = startOffset; offset < endOffset; offset++) {
+            result = 31 * data[offset];
+        }
         return result;
     }
 }

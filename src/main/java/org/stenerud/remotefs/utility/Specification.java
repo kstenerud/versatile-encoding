@@ -42,6 +42,27 @@ public class Specification implements Iterable<Specification.ParameterSpecificat
         return parameterSpecificationsByIndex.iterator();
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Specification that = (Specification) o;
+        return Objects.equals(name, that.name);
+    }
+
+    @Override
+    public int hashCode() {
+
+        return Objects.hash(name);
+    }
+
+    @Override
+    public String toString() {
+        return "Specification{" +
+                "name='" + name + '\'' +
+                '}';
+    }
+
     public static class Attribute extends Named {
         private Attribute(@Nonnull String name) {
             super(name);
@@ -61,7 +82,7 @@ public class Specification implements Iterable<Specification.ParameterSpecificat
         public static final Type BYTES = new Type("bytes");
         public static final Type LIST = new Type("list");
         public static final Type MAP = new Type("map");
-//        public static final Type ANY = new Type("any");
+        public static final Type ANY = new Type("any");
         public static final Type STREAM = new Type("stream");
         public static final Type NULL = new Type("null");
     }

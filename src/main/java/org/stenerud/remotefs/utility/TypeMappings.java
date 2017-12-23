@@ -18,6 +18,7 @@ public class TypeMappings {
         registerType(Specification.Type.BYTES, byte[].class);
         registerType(Specification.Type.LIST, List.class);
         registerType(Specification.Type.MAP, Map.class);
+        CLASS_TO_TYPE.put(BinaryBuffer.class, Specification.Type.BYTES);
     }
 
     private static void registerType(Specification.Type type, Class javaClass) {

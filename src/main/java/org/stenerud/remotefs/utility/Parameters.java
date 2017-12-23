@@ -177,6 +177,10 @@ public class Parameters implements Iterable<Object> {
             return Specification.Type.STREAM;
         }
 
+        if(paramSpec.type == Specification.Type.ANY) {
+            return actualType;
+        }
+
         throw new ValidationException(paramSpec.name + ": Value has type " + actualType + " but spec requires " + paramSpec.type);
     }
 

@@ -28,6 +28,8 @@ public class BinaryCodec {
     // TODO: May have to add partial array/list/map types...
     // no way to know if an array is terminated or not
     public interface Types {
+        // UTC date-time
+        // IEEE 754-2008 decimal128:
         byte EMPTY         = -123;
         byte INT16         =  123;
         byte INT32         = -124;

@@ -14,8 +14,8 @@ import static org.junit.Assert.*;
 public class BinaryCodecTest {
     @Test
     public void testLongLength() throws Exception {
-//        assertEncodeDecode(new BinaryBuffer(10));
-//        assertEncodeDecode(new BinaryBuffer(100));
+        assertEncodeDecode(new BinaryBuffer(10));
+        assertEncodeDecode(new BinaryBuffer(100));
         assertEncodeDecode(new BinaryBuffer(1000));
         assertEncodeDecode(new BinaryBuffer(10000));
         assertEncodeDecode(new BinaryBuffer(100000));
@@ -85,6 +85,78 @@ public class BinaryCodecTest {
         String result = decodeSingleObject(encoder.view(), String.class);
         String expected = "hello world";
         assertEquals(expected, result);
+    }
+
+    @Test
+    public void testListStream() throws Exception {
+        List<Object> expected = Arrays.asList("test", 1, 0.1);
+        BinaryBuffer encoded = new BinaryBuffer(1000);
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
+        BinaryCodec.Encoder.ListStream stream = encoder.newListStream();
+        for(Object o: expected) {
+            stream.write(o);
+        }
+        stream.close();
+        Object result = decodeSingleObject(encoder.view(), List.class);
+        DeepEquality.assertEquals(expected, result);
+    }
+
+    @Test
+    public void testListStreamFillUntilFull() throws Exception {
+        List<Object> expected = new LinkedList<>();
+        BinaryBuffer encoded = new BinaryBuffer(200);
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
+        BinaryCodec.Encoder.ListStream stream = encoder.newListStream();
+        try {
+            for(;;) {
+                Object o = "test";
+                stream.write(o);
+                expected.add(o);
+            }
+        } catch(BinaryCodec.NoRoomException e) {
+            // Ignored
+        }
+        stream.close();
+        Object result = decodeSingleObject(encoder.view(), List.class);
+        DeepEquality.assertEquals(expected, result);
+    }
+
+    @Test
+    public void testMapStream() throws Exception {
+        Map<Object, Object> expected = new HashMap<>();
+        expected.put("one", 1);
+        expected.put(2, "two");
+        expected.put("two point 5", 2.5);
+        BinaryBuffer encoded = new BinaryBuffer(1000);
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
+        BinaryCodec.Encoder.MapStream stream = encoder.newMapStream();
+        for(Map.Entry entry: expected.entrySet()) {
+            stream.write(entry.getKey(), entry.getValue());
+        }
+        stream.close();
+        Object result = decodeSingleObject(encoder.view(), Map.class);
+        DeepEquality.assertEquals(expected, result);
+    }
+
+    @Test
+    public void testMapStreamFillUntilFull() throws Exception {
+        Map<Object, Object> expected = new HashMap<>();
+        BinaryBuffer encoded = new BinaryBuffer(200);
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
+        BinaryCodec.Encoder.MapStream stream = encoder.newMapStream();
+        try {
+            for(;;) {
+                Object k = "key";
+                Object v = "value";
+                stream.write(k, v);
+                expected.put(k, v);
+            }
+        } catch(BinaryCodec.NoRoomException e) {
+            // Ignored
+        }
+        stream.close();
+        Object result = decodeSingleObject(encoder.view(), Map.class);
+        DeepEquality.assertEquals(expected, result);
     }
 
     @Test

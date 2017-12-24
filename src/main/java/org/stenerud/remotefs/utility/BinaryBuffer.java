@@ -67,11 +67,18 @@ public class BinaryBuffer {
 
     private static final char[] HEX_VALUES = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
+    private static int MAX_LENGTH_FOR_TOSTRING = 100;
     @Override
     public @Nonnull String toString() {
+        int workingEndOffset = endOffset;
+        String suffix = "";
+        if(length > MAX_LENGTH_FOR_TOSTRING) {
+            workingEndOffset = startOffset + MAX_LENGTH_FOR_TOSTRING;
+            suffix = ", ...";
+        }
         StringBuilder builder = new StringBuilder();
         builder.append("[");
-        for(int i = startOffset; i < endOffset; i++) {
+        for(int i = startOffset; i < workingEndOffset; i++) {
             byte value = data[i];
             builder.append(HEX_VALUES[(value >> 4) & 0xf]);
             builder.append(HEX_VALUES[value & 0xf]);
@@ -79,6 +86,7 @@ public class BinaryBuffer {
                 builder.append(", ");
             }
         }
+        builder.append(suffix);
         builder.append("]");
         return builder.toString();
     }

@@ -9,14 +9,11 @@ import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 
-// LL: SSSSTTXX
-// LH: SSSSSSSS
-// HL: SSSSSSSS
-// HH: SSSSSSSS
-// Read as int32. Low 2 bits are type, mid 2 bits are size. Discard what's not needed, shift right 4.
-// XX: how many additional bytes are used (0-3)
-// Message sizes 15 + 4 (4 bit), 4k + 4 (12 bit), 1M + 4 (20 bit), 256M + 4 (28 bit)
-// NOTE: Minimum message size (size field + message contents) is 4
+// Length encoding is s3: vvvvvvvS (vvvvvvvv vvvvvvvv). When S = 1, two more bytes follow.
+// Type encoding is s2: vvvvvvvS (vvvvvvvv). When S = 1, one more byte follows.
+// Read as little endian, shift right 1. S bit determines what upper bits to mask.
+// Message length is length including length field.
+// Minimum message length is 2.
 public class MessageCodec {
     public interface Types {
         // total chunks:
@@ -25,12 +22,12 @@ public class MessageCodec {
         // chunk number:
         // - positive: chunk number
         // - 0: this is the last chunk
-        int RESOURCE  = 0x00; // stream id, total chunks, chunk number, chunk data (3-12 bytes + chunk) (single = 3-6 + chunk)
-        int CALL      = 0x04; // job id, function, result stream id, parameters (3-12 bytes + params)
-        int STATUS    = 0x08; // job id, proportion complete (5-8 bytes)
-        int EXCEPTION = 0x0c; // context id, type, message (2-8 bytes + message)
+        int RESOURCE  = 1; // stream id, total chunks, chunk number, chunk data (5 + chunk)
+        int STATUS    = 2; // job id, percent complete, optional return value (5)
+        int EXCEPTION = 3; // context id, type, message, context data (6 + message + data)
 
         // resource encoding/compression?
+        // Compression using Google snappy
 
         // Functions:
         // get session id (void)
@@ -39,52 +36,16 @@ public class MessageCodec {
         // abort function call (id)
         // get schema (search params, as summary?)
     }
-    private static final int TYPE_MASK = 0x0c;
-    private static final int SIZE_FIELD_SIZE_MASK = 0x03;
-    private static final int SIZE_SHIFT_AMOUNT = 4;
-    private static final int SIZE_MASKS[] = {0x0f, 0x0fff, 0x0fffff, 0x0fffffff};
-    private static final int MAX_MESSAGE_CONTENTS_OFFSET = 4;
-    private static final int MIN_MESSAGE_SIZE = MAX_MESSAGE_CONTENTS_OFFSET;
-    public static final int MAX_MESSAGE_SIZE = SIZE_MASKS[SIZE_MASKS.length - 1] + MIN_MESSAGE_SIZE;
-
+    private static final IntegerCodec lengthCodec = new IntegerCodec.OneThree();
+    private static final IntegerCodec typeCodec = new IntegerCodec.OneTwo();
+    private static final int MAX_MESSAGE_CONTENTS_OFFSET = lengthCodec.getMaxEncodedLength() + typeCodec.getMaxEncodedLength();
     private final Map<Specification, Integer> specToType = new StrictMap<>(HashMap::new);
     private final Map<Integer, Specification> typeToSpec = new StrictMap<>(HashMap::new);
 
-    private static int getTypeFieldContents(int field) {
-        return field & TYPE_MASK;
-    }
-
-    private static int getSizeFieldContents(int field) {
-        return field & SIZE_FIELD_SIZE_MASK;
-    }
-
-    public static int getMessageSize(int field) {
-        return ((field>>SIZE_SHIFT_AMOUNT) & SIZE_MASKS[getSizeFieldContents(field)]) + MIN_MESSAGE_SIZE;
-    }
-
-    private static int getMessageSizeSize(int field) {
-        return getSizeFieldContents(field) + 1;
-    }
-
-    private static int getAppropriateSizeFieldSize(int size) {
-        for(int i = 0; i < SIZE_MASKS.length; i++) {
-            if(size < SIZE_MASKS[i]) {
-                return i;
-            }
-        }
-        throw new IllegalStateException("Message is too long (" + (size + MIN_MESSAGE_SIZE) + "). Max length is " + MAX_MESSAGE_SIZE);
-    }
-
-    private static int combineTypeAndSize(int messageType, int size) {
-        size -= MIN_MESSAGE_SIZE;
-        if(size < 0) {
-            throw new IllegalStateException("Message is too short (" + (size + MIN_MESSAGE_SIZE) + "). Min length is " + MIN_MESSAGE_SIZE);
-        }
-        return (size << SIZE_SHIFT_AMOUNT) | messageType | getAppropriateSizeFieldSize(size);
-    }
+    public static final int MAX_MESSAGE_TYPE = typeCodec.getMaxValue();
 
     public void registerSpecification(@Nonnull Specification spec, int type) {
-        if((type & TYPE_MASK) != type) {
+        if(type > MAX_MESSAGE_TYPE) {
             throw new IllegalArgumentException("Message type " + type + " is outside of allowed range");
         }
         specToType.put(spec, type);
@@ -93,35 +54,36 @@ public class MessageCodec {
 
     public BinaryBuffer encode(@Nonnull Parameters parameters, @Nonnull BinaryBuffer buffer) throws BinaryCodec.NoRoomException {
         parameters.verifyCompleteness();
-        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(buffer.newView(MAX_MESSAGE_CONTENTS_OFFSET));
+        int type = specToType.get(parameters.getSpecification());
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(buffer.newView(buffer.startOffset + MAX_MESSAGE_CONTENTS_OFFSET));
 
         for(Object value: parameters) {
             encoder.writeObject(value);
         }
 
-        int typeAndSize = combineTypeAndSize(specToType.get(parameters.getSpecification()), encoder.view().length);
-        LittleEndianCodec.encodeInt32(typeAndSize, buffer.data, buffer.startOffset);
-        int messageSizeSize = getMessageSizeSize(typeAndSize);
-        int messageOffset = buffer.startOffset + MAX_MESSAGE_CONTENTS_OFFSET;
-        int sizeFieldOffset = messageOffset - messageSizeSize;
-        if(sizeFieldOffset < messageOffset) {
-            moveMemory(buffer, buffer.startOffset, sizeFieldOffset, messageSizeSize);
+        BinaryBuffer encodedView = encoder.view();
+        int offset = encodedView.startOffset;
+        int typeLength = typeCodec.getEncodedLength(type);
+        offset -= typeLength;
+        typeCodec.encode(buffer.data, offset, type);
+        int length = encodedView.length + typeLength + 1;
+        int lengthLength = lengthCodec.getEncodedLength(length);
+        if(lengthLength > 1) {
+            length += lengthLength - 1;
+            lengthLength = lengthCodec.getEncodedLength(length);
         }
-        return buffer.newView(sizeFieldOffset, encoder.view().endOffset);
-    }
-
-    private void moveMemory(BinaryBuffer buffer, int srcOffset, int dstOffset, int size) {
-        int si = srcOffset + size;
-        int di = dstOffset + size;
-        byte[] data = buffer.data;
-        while(si > srcOffset) {
-            data[--di] = data[--si];
-        }
+        offset -= lengthLength;
+        lengthCodec.encode(buffer.data, offset, length);
+        return buffer.newView(offset, encodedView.endOffset);
     }
 
     public @Nonnull Parameters decode(@Nonnull BinaryBuffer buffer) {
-        int typeAndSize = LittleEndianCodec.decodeInt32(buffer.data, buffer.startOffset);
-        Specification specification = typeToSpec.get(getTypeFieldContents(typeAndSize));
+        int offset = buffer.startOffset;
+        int length = lengthCodec.decode(buffer.data, offset);
+        offset += lengthCodec.getEncodedLength(length);
+        int type = typeCodec.decode(buffer.data, offset);
+        offset += typeCodec.getEncodedLength(type);
+        Specification specification = typeToSpec.get(type);
         Parameters parameters = new Parameters(specification);
         BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(new BinaryCodec.Decoder.Visitor() {
             @Override
@@ -129,7 +91,7 @@ public class MessageCodec {
                 parameters.add(value);
             }
         });
-        decoder.feed(buffer.newView(buffer.startOffset + getMessageSizeSize(typeAndSize)));
+        decoder.feed(buffer.newView(offset));
 
         parameters.verifyCompleteness();
         return parameters;

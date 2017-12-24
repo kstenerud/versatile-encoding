@@ -37,17 +37,18 @@ public class LittleEndianCodecTest {
     }
 
     private void assertEncode(Number decoded, BinaryBuffer expected) {
+        LittleEndianCodec codec = new LittleEndianCodec();
         BinaryBuffer actual = new BinaryBuffer(10);
         if(decoded instanceof Short) {
-            actual = actual.newView(0, LittleEndianCodec.encodeInt16((short) decoded, actual.data, 0));
+            actual = actual.newView(0, codec.encodeInt16((short) decoded, actual.data, 0));
         } else if(decoded instanceof Integer) {
-            actual = actual.newView(0, LittleEndianCodec.encodeInt32((int)decoded, actual.data, 0));
+            actual = actual.newView(0, codec.encodeInt32((int)decoded, actual.data, 0));
         } else if(decoded instanceof Long) {
-            actual = actual.newView(0, LittleEndianCodec.encodeInt64((long)decoded, actual.data, 0));
+            actual = actual.newView(0, codec.encodeInt64((long)decoded, actual.data, 0));
         } else if(decoded instanceof Float) {
-            actual = actual.newView(0, LittleEndianCodec.encodeFloat32((float)decoded, actual.data, 0));
+            actual = actual.newView(0, codec.encodeFloat32((float)decoded, actual.data, 0));
         } else if(decoded instanceof Double) {
-            actual = actual.newView(0, LittleEndianCodec.encodeFloat64((double)decoded, actual.data, 0));
+            actual = actual.newView(0, codec.encodeFloat64((double)decoded, actual.data, 0));
         } else {
             throw new IllegalArgumentException("Unhandled type: " + decoded.getClass());
         }
@@ -56,19 +57,20 @@ public class LittleEndianCodecTest {
     }
 
     private void assertDecode(BinaryBuffer encoded, Number expected) {
+        LittleEndianCodec codec = new LittleEndianCodec();
         Number actual;
         if(expected instanceof Short) {
-            actual = LittleEndianCodec.decodeInt16(encoded.data, 0);
+            actual = codec.decodeInt16(encoded.data, 0);
         } else if(expected instanceof Integer) {
-            actual = LittleEndianCodec.decodeInt32(encoded.data, 0);
+            actual = codec.decodeInt32(encoded.data, 0);
         } else if(expected instanceof Integer) {
-            actual = LittleEndianCodec.decodeInt32(encoded.data, 0);
+            actual = codec.decodeInt32(encoded.data, 0);
         } else if(expected instanceof Long) {
-            actual = LittleEndianCodec.decodeInt64(encoded.data, 0);
+            actual = codec.decodeInt64(encoded.data, 0);
         } else if(expected instanceof Float) {
-            actual = LittleEndianCodec.decodeFloat32(encoded.data, 0);
+            actual = codec.decodeFloat32(encoded.data, 0);
         } else if(expected instanceof Double) {
-            actual = LittleEndianCodec.decodeFloat64(encoded.data, 0);
+            actual = codec.decodeFloat64(encoded.data, 0);
         } else {
             throw new IllegalArgumentException("Unhandled type: " + expected.getClass());
         }

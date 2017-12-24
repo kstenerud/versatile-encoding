@@ -1,7 +1,6 @@
 package org.stenerud.remotefs;
 
 import org.junit.Test;
-import org.stenerud.remotefs.message.CallMessageSpecification;
 import org.stenerud.remotefs.message.ExceptionMessageSpecification;
 import org.stenerud.remotefs.message.ResourceMessageSpecification;
 import org.stenerud.remotefs.message.StatusMessageSpecification;
@@ -11,6 +10,8 @@ import org.stenerud.remotefs.utility.Parameters;
 import org.stenerud.remotefs.utility.Specification;
 
 import java.util.LinkedList;
+
+import static org.junit.Assert.assertTrue;
 
 public class MessageCodecTest {
 
@@ -33,16 +34,7 @@ public class MessageCodecTest {
     public void testStatus() throws Exception {
         assertEncodeDecode(new Parameters(new StatusMessageSpecification())
                 .set(StatusMessageSpecification.JOB_ID, 1)
-                .set(StatusMessageSpecification.COMPLETION, 0.5), 100);
-    }
-
-    @Test
-    public void testCall() throws Exception {
-        assertEncodeDecode(new Parameters(new CallMessageSpecification())
-                .set(CallMessageSpecification.JOB_ID, 1)
-                .set(CallMessageSpecification.FUNCTION, 10)
-                .set(CallMessageSpecification.RETURN_ID, 3)
-                .set(CallMessageSpecification.PARAMETERS, new LinkedList<>()), 100);
+                .set(StatusMessageSpecification.COMPLETION, 50), 100);
     }
 
     @Test
@@ -64,6 +56,33 @@ public class MessageCodecTest {
         assertResourceMessage(1024*1024 - 5);
     }
 
+    @Test
+    public void testMessageSizeAndType() throws Exception {
+        assertMessageWithTypeAndSize(0, 0);
+        assertMessageWithTypeAndSize(0, 1);
+        assertMessageWithTypeAndSize(0, 2);
+
+        // 1-3 byte length crossover point
+        assertMessageWithTypeAndSize(0, 0x7a);
+        assertMessageWithTypeAndSize(0, 0x7b);
+
+        // 1-2 byte type crossover point
+        assertMessageWithTypeAndSize(0x7f, 0);
+        assertMessageWithTypeAndSize(0x80, 1);
+
+        // Both crossover point
+        assertMessageWithTypeAndSize(0x7f, 0x7a);
+        assertMessageWithTypeAndSize(0x80, 0x7a);
+        assertMessageWithTypeAndSize(0x7f, 0x7b);
+        assertMessageWithTypeAndSize(0x80, 0x7b);
+    }
+
+    @Test
+    public void testBadMessageTypeAndSize() throws Exception {
+        assertBadMessageType(0x8000);
+        assertBadMessageLength(0x800000);
+    }
+
     private void assertResourceMessage(int chunkSize) throws Exception {
         assertEncodeDecode(new Parameters(new ResourceMessageSpecification())
                 .set(ResourceMessageSpecification.STREAM_ID, 1)
@@ -72,22 +91,60 @@ public class MessageCodecTest {
                 .set(ResourceMessageSpecification.CHUNK, new byte[chunkSize]), chunkSize + 100);
     }
 
-    private static MessageCodec messageCodec = new MessageCodec();
-    static {
+    private MessageCodec getStandardMessageCodec() {
+        MessageCodec messageCodec = new MessageCodec();
         messageCodec.registerSpecification(new ExceptionMessageSpecification(), MessageCodec.Types.EXCEPTION);
         messageCodec.registerSpecification(new ResourceMessageSpecification(), MessageCodec.Types.RESOURCE);
         messageCodec.registerSpecification(new StatusMessageSpecification(), MessageCodec.Types.STATUS);
-        messageCodec.registerSpecification(new CallMessageSpecification(), MessageCodec.Types.CALL);
+        return messageCodec;
+    }
+
+    private void assertBadMessageType(int type) throws Exception {
+        try {
+            assertMessageWithTypeAndSize(type, 10);
+            assertTrue("Should have thrown", false);
+        } catch(IllegalArgumentException e) {
+            // Expected
+        }
+    }
+
+    private void assertBadMessageLength(int length) throws Exception {
+        try {
+            assertMessageWithTypeAndSize(1, length);
+            assertTrue("Should have thrown", false);
+        } catch(IllegalArgumentException e) {
+            // Expected
+        }
+    }
+
+    private void assertMessageWithTypeAndSize(int type, int size) throws Exception {
+        MessageCodec codec = new MessageCodec();
+        Specification specification = new Specification("test", "description",
+                new Specification.ParameterSpecification("chunk", Specification.Type.ANY, "The chunk data")
+                );
+        codec.registerSpecification(specification, type);
+        Parameters parameters = new Parameters(specification).add(new byte[size]);
+        BinaryBuffer buffer = new BinaryBuffer(size + 11);
+        BinaryBuffer encodedView = codec.encode(parameters, buffer);
+        Parameters result = codec.decode(encodedView);
+        for(Specification.ParameterSpecification paramSpec: parameters.getSpecification()) {
+            if(result.isPresent(paramSpec.name)) {
+                Object expected = result.getObject(paramSpec.name);
+                Object actual = result.getObject(paramSpec.name);
+                DeepEquality.assertEquals(expected, actual);
+            }
+        }
     }
 
     private void assertEncodeDecode(Parameters parameters, int bufferSize) throws Exception {
+        MessageCodec messageCodec = getStandardMessageCodec();
         BinaryBuffer buffer = new BinaryBuffer(bufferSize);
         BinaryBuffer encodedView = messageCodec.encode(parameters, buffer);
         Parameters result = messageCodec.decode(encodedView);
         for(Specification.ParameterSpecification paramSpec: parameters.getSpecification()) {
-            if(parameters.isPresent(paramSpec.name)) {
-                Object expected = parameters.getObject(paramSpec.name);
-                Object actual = parameters.getObject(paramSpec.name);
+            if(result.isPresent(paramSpec.name)) {
+                Object expected = result.getObject(paramSpec.name);
+                Object actual = result.getObject(paramSpec.name);
                 DeepEquality.assertEquals(expected, actual);
             }
         }

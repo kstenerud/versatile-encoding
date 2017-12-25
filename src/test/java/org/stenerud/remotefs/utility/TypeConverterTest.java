@@ -8,16 +8,40 @@ import static org.junit.Assert.assertNull;
 
 public class TypeConverterTest {
 
+    private int getResult(int value) {
+        int result = (value - 1) & ~value;
+
+//        int result = ((value - 1) & ~value) & 0x80808080;
+//        result = (result >>> 7) |
+//                (result >>> 15) |
+//                (result >>> 23) |
+//                (result >>> 31);
+
+
+        return result;
+    }
+
+    private void printResult(int value) {
+        System.out.println("" + String.format("%08x", value) + ": " + String.format("%02x", getResult(value)));
+    }
+
     @Test
     public void testPromote() {
-        TypeConverter converter = new TypeConverter();
-        assertEquals(10L, converter.promote((byte)10));
-        assertEquals(10L, converter.promote((short)10));
-        assertEquals(10L, converter.promote((int)10));
-        assertEquals(10L, converter.promote((long)10));
+        printResult(0x00);
+        printResult(0x01);
+        printResult(0x42);
 
-        assertEquals(10.4d, (double)converter.promote(10.4f), 0.01);
-        assertEquals(10.4d, (double)converter.promote(10.4d), 0.01);
+//        for(int i = 0; i < 0x100; i++) {
+//            System.out.println(String.format("%02x", getResult(i) & 0xff));
+//        }
+//        TypeConverter converter = new TypeConverter();
+//        assertEquals(10L, converter.promote((byte)10));
+//        assertEquals(10L, converter.promote((short)10));
+//        assertEquals(10L, converter.promote((int)10));
+//        assertEquals(10L, converter.promote((long)10));
+//
+//        assertEquals(10.4d, (double)converter.promote(10.4f), 0.01);
+//        assertEquals(10.4d, (double)converter.promote(10.4d), 0.01);
     }
 
     @Test

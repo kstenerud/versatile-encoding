@@ -61,7 +61,7 @@ public class MessageCodec {
             encoder.writeObject(value);
         }
 
-        BinaryBuffer encodedView = encoder.view();
+        BinaryBuffer encodedView = encoder.newView();
         int offset = encodedView.startOffset;
         int typeLength = typeCodec.getEncodedLength(type);
         offset -= typeLength;
@@ -77,7 +77,7 @@ public class MessageCodec {
         return buffer.newView(offset, encodedView.endOffset);
     }
 
-    public @Nonnull Parameters decode(@Nonnull BinaryBuffer buffer) {
+    public @Nonnull Parameters decode(@Nonnull BinaryBuffer buffer) throws BinaryCodec.EndOfDataException {
         int offset = buffer.startOffset;
         int length = lengthCodec.decode(buffer.data, offset);
         offset += lengthCodec.getEncodedLength(length);

@@ -83,7 +83,7 @@ public class BinaryBuffer {
             builder.append(HEX_VALUES[(value >> 4) & 0xf]);
             builder.append(HEX_VALUES[value & 0xf]);
             if(i < endOffset - 1) {
-                builder.append(", ");
+                builder.append(",");
             }
         }
         builder.append(suffix);
@@ -97,6 +97,12 @@ public class BinaryBuffer {
         } catch (UnsupportedEncodingException e) {
             throw new IllegalStateException("UTF-8 not supported", e);
         }
+    }
+
+    public boolean hasSpace(int startOffset, int endOffset) {
+        return startOffset >= this.startOffset &&
+                endOffset <= this.endOffset &&
+                startOffset <= endOffset;
     }
 
     public int lengthToOffset(int offset) {

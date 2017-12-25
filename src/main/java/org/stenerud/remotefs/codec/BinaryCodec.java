@@ -16,31 +16,33 @@ import java.util.Map;
  * Converts to/from a compact binary format.
  */
 public class BinaryCodec {
-    private static final Object END_CONTAINER_MARKER = new Object();
+    private static final int SMALLINT_MIN = (byte)0x89;
+    private static final int SMALLINT_MAX = (byte)0x74;
 
-    private static final int SMALLINT_MIN = -123;
-    private static final int SMALLINT_MAX =  122;
-    private static final int INT16_MIN    = -32768;
-    private static final int INT16_MAX    =  32767;
-    private static final int INT32_MIN    = -2147483648;
-    private static final int INT32_MAX    =  2147483647;
-
-    // TODO: May have to add partial array/list/map types...
-    // no way to know if an array is terminated or not
     public interface Types {
-        // UTC date-time
-        // IEEE 754-2008 decimal128:
-        byte EMPTY         = -123;
-        byte INT16         =  123;
-        byte INT32         = -124;
-        byte INT64         =  124;
-        byte FLOAT32       = -125;
-        byte FLOAT64       =  125;
-        byte STRING        = -126;
-        byte BYTES         =  126;
-        byte LIST          = -127;
-        byte MAP           =  127;
-        byte END_CONTAINER = -128;
+        byte EMPTY         = (byte)0x8a;
+        byte FLOAT32       = (byte)0x89;
+        byte FLOAT64       = (byte)0x88;
+//        byte DECIMAL128    = (byte)0x87;
+        byte INT16         = (byte)0x86;
+        byte INT24         = (byte)0x85;
+        byte INT32         = (byte)0x84;
+        byte INT40         = (byte)0x83;
+        byte INT48         = (byte)0x82;
+        byte INT56         = (byte)0x81;
+        byte INT64         = (byte)0x80;
+
+        byte STRING        = (byte)0x75;
+        byte BYTES         = (byte)0x76;
+        byte LIST          = (byte)0x77;
+        byte MAP           = (byte)0x78;
+        byte END_CONTAINER = (byte)0x79;
+//        byte DATE_DAYS     = (byte)0x7a;
+//        byte DATE_SECONDS  = (byte)0x7b;
+//        byte DATE_MSECONDS = (byte)0x7c;
+//        byte DATE_USECONDS = (byte)0x7d;
+        byte FALSE         = (byte)0x7e;
+        byte TRUE          = (byte)0x7f;
     }
 
     static class EndOfDataException extends IOException {
@@ -65,7 +67,7 @@ public class BinaryCodec {
             this.currentOffset = buffer.startOffset;
         }
 
-        public @Nonnull BinaryBuffer view() {
+        public @Nonnull BinaryBuffer newView() {
             return buffer.newView(buffer.startOffset, currentOffset);
         }
 
@@ -88,9 +90,53 @@ public class BinaryCodec {
             }
         }
 
+        private int write24(int value) throws NoRoomException {
+            try {
+                endianCodec.encodeInt32(value, buffer.data, currentOffset);
+                int length = 3;
+                currentOffset += length;
+                return length;
+            } catch(ArrayIndexOutOfBoundsException e) {
+                throw new NoRoomException();
+            }
+        }
+
         private int write32(int value) throws NoRoomException {
             try {
                 int length = endianCodec.encodeInt32(value, buffer.data, currentOffset);
+                currentOffset += length;
+                return length;
+            } catch(ArrayIndexOutOfBoundsException e) {
+                throw new NoRoomException();
+            }
+        }
+
+        private int write40(long value) throws NoRoomException {
+            try {
+                endianCodec.encodeInt64(value, buffer.data, currentOffset);
+                int length = 5;
+                currentOffset += length;
+                return length;
+            } catch(ArrayIndexOutOfBoundsException e) {
+                throw new NoRoomException();
+            }
+        }
+
+        private int write48(long value) throws NoRoomException {
+            try {
+                endianCodec.encodeInt64(value, buffer.data, currentOffset);
+                int length = 6;
+                currentOffset += length;
+                return length;
+            } catch(ArrayIndexOutOfBoundsException e) {
+                throw new NoRoomException();
+            }
+        }
+
+        private int write56(long value) throws NoRoomException {
+            try {
+                endianCodec.encodeInt64(value, buffer.data, currentOffset);
+                int length = 7;
                 currentOffset += length;
                 return length;
             } catch(ArrayIndexOutOfBoundsException e) {
@@ -116,27 +162,27 @@ public class BinaryCodec {
             return writeInteger(length);
         }
 
-        private int writeBufferContents(@Nonnull byte[] value, int startOffset, int endOffset) throws NoRoomException {
-            try {
-                int oldOffset = currentOffset;
-                int length = endOffset - startOffset;
-                writeLength(length);
-                byte[] bufferData = buffer.data;
-                for (int srcI = startOffset; srcI < endOffset; srcI++) {
-                    bufferData[currentOffset++] = value[srcI];
-                }
-                return currentOffset - oldOffset;
-            } catch(ArrayIndexOutOfBoundsException e) {
+        private int writeData(@Nonnull byte[] value, int startOffset, int endOffset) throws NoRoomException {
+            int oldOffset = currentOffset;
+            int length = endOffset - startOffset;
+            writeLength(length);
+            if(!buffer.hasSpace(currentOffset, currentOffset + length)) {
+                currentOffset = oldOffset;
                 throw new NoRoomException();
             }
+            byte[] bufferData = buffer.data;
+            for (int srcI = startOffset; srcI < endOffset; srcI++) {
+                bufferData[currentOffset++] = value[srcI];
+            }
+            return currentOffset - oldOffset;
         }
 
-        private int writeBufferContents(@Nonnull byte[] value) throws NoRoomException {
-            return writeBufferContents(value, 0, value.length);
+        private int writeData(@Nonnull byte[] value) throws NoRoomException {
+            return writeData(value, 0, value.length);
         }
 
-        private int writeBufferContents(@Nonnull BinaryBuffer value) throws NoRoomException {
-            return writeBufferContents(value.data, value.startOffset, value.endOffset);
+        private int writeData(@Nonnull BinaryBuffer value) throws NoRoomException {
+            return writeData(value.data, value.startOffset, value.endOffset);
         }
 
         public int writeObject(@CheckForNull Object value) throws NoRoomException {
@@ -163,10 +209,16 @@ public class BinaryCodec {
             } else if(value instanceof Integer) {
                 return writeInteger((long)(int)value);
             } else if(value instanceof Float) {
-                return writeFloat((double)(float)value);
+                return writeFloat32((float)value);
+            } else if(value instanceof Boolean) {
+                return writeBoolean((boolean)value);
             } else {
                 throw new IllegalArgumentException("Don't know how to encode type " + value.getClass());
             }
+        }
+
+        private int writeBoolean(boolean value) throws NoRoomException {
+            return writeType(value ? Types.TRUE : Types.FALSE);
         }
 
         private int writeIntegerSmall(long value) throws NoRoomException {
@@ -177,8 +229,24 @@ public class BinaryCodec {
             return writeType(Types.INT16) + write16((short)value);
         }
 
+        private int writeInteger24(long value) throws NoRoomException {
+            return writeType(Types.INT24) + write24((int)value);
+        }
+
         private int writeInteger32(long value) throws NoRoomException {
             return writeType(Types.INT32) + write32((int)value);
+        }
+
+        private int writeInteger40(long value) throws NoRoomException {
+            return writeType(Types.INT40) + write40(value);
+        }
+
+        private int writeInteger48(long value) throws NoRoomException {
+            return writeType(Types.INT48) + write48(value);
+        }
+
+        private int writeInteger56(long value) throws NoRoomException {
+            return writeType(Types.INT56) + write56(value);
         }
 
         private int writeInteger64(long value) throws NoRoomException {
@@ -188,13 +256,26 @@ public class BinaryCodec {
         private int writeInteger(long value) throws NoRoomException {
             if(value >= SMALLINT_MIN && value <= SMALLINT_MAX) {
                 return writeIntegerSmall(value);
-            } else if(value >= INT16_MIN && value <= INT16_MAX) {
-                return writeInteger16(value);
-            } else if(value >= INT32_MIN && value <= INT32_MAX) {
-                return writeInteger32(value);
-            } else {
-                return writeInteger64(value);
             }
+            if(value >= -0x8000 && value <= 0x7fff) {
+                return writeInteger16(value);
+            }
+            if(value >= -0x800000 && value <= 0x7fffff) {
+                return writeInteger24(value);
+            }
+            if(value >= -0x80000000 && value <= 0x7fffffff) {
+                return writeInteger32(value);
+            }
+            if(value >= -0x8000000000L && value <= 0x7fffffffffL) {
+                return writeInteger40(value);
+            }
+            if(value >= -0x800000000000L && value <= 0x7fffffffffffL) {
+                return writeInteger48(value);
+            }
+            if(value >= -0x80000000000000L && value <= 0x7fffffffffffffL) {
+                return writeInteger56(value);
+            }
+            return writeInteger64(value);
         }
 
         private int writeFloat32(double value) throws NoRoomException {
@@ -214,15 +295,15 @@ public class BinaryCodec {
         }
 
         private int writeString(@Nonnull String value) throws NoRoomException {
-            return writeType(Types.STRING) + writeBufferContents(stringToBytes(value));
+            return writeType(Types.STRING) + writeData(stringToBytes(value));
         }
 
         private int writeBytes(@Nonnull BinaryBuffer value) throws NoRoomException {
-            return writeType(Types.BYTES) + writeBufferContents(value);
+            return writeType(Types.BYTES) + writeData(value);
         }
 
         private int writeBytes(@Nonnull byte[] value) throws NoRoomException {
-            return writeType(Types.BYTES) + writeBufferContents(value);
+            return writeType(Types.BYTES) + writeData(value);
         }
 
         private int writeEndContainer() throws NoRoomException {
@@ -426,6 +507,8 @@ public class BinaryCodec {
     }
 
     public static class Decoder {
+        private static final Object END_CONTAINER_MARKER = new Object();
+
         public interface Visitor {
             void onValue(Object value);
         }
@@ -436,52 +519,14 @@ public class BinaryCodec {
             this.visitor = visitor;
         }
 
-        public void feed(@Nonnull BinaryBuffer buffer) {
+        public void feed(@Nonnull BinaryBuffer buffer) throws EndOfDataException {
             Reader reader = new Reader(buffer);
-            try {
-                for (; ; ) {
-                    byte type = reader.readType();
-                    Object value;
-                    switch (type) {
-                        case Types.INT16:
-                            value = reader.readInt16();
-                            break;
-                        case Types.INT32:
-                            value = reader.readInt32();
-                            break;
-                        case Types.INT64:
-                            value = reader.readInt64();
-                            break;
-                        case Types.FLOAT32:
-                            value = reader.readFloat32();
-                            break;
-                        case Types.FLOAT64:
-                            value = reader.readFloat64();
-                            break;
-                        case Types.BYTES:
-                            value = reader.readBytes();
-                            break;
-                        case Types.STRING:
-                            value = reader.readString();
-                            break;
-                        case Types.LIST:
-                            value = reader.readList();
-                            break;
-                        case Types.MAP:
-                            value = reader.readMap();
-                            break;
-                        case Types.EMPTY:
-                            value = null;
-                            break;
-                        case Types.END_CONTAINER:
-                            throw new IllegalStateException("Unexpected end of container");
-                        default:
-                            value = (long) (byte) type;
-                    }
-                    visitor.onValue(value);
+            while (reader.hasObject()) {
+                Object value = reader.readObject();
+                if(value == END_CONTAINER_MARKER) {
+                    throw new IllegalStateException("Unexpected end of container");
                 }
-            } catch(EndOfDataException e) {
-                // No more data, so return
+                visitor.onValue(value);
             }
         }
 
@@ -501,68 +546,104 @@ public class BinaryCodec {
                 }
             }
 
-            byte readType() throws EndOfDataException {
+            private byte readType() throws EndOfDataException {
                 return readInt8();
             }
 
-            byte readInt8() throws EndOfDataException {
+            private byte readInt8() throws EndOfDataException {
                 checkCanReadBytes(1);
                 return buffer.data[currentOffset++];
             }
 
-            long readInt16() throws EndOfDataException {
-                checkCanReadBytes(2);
+            private long readInt16() throws EndOfDataException {
+                int bytesToRead = 2;
+                checkCanReadBytes(bytesToRead);
                 long result = endianCodec.decodeInt16(buffer.data, currentOffset);
-                currentOffset += 2;
+                currentOffset += bytesToRead;
                 return result;
             }
 
-            long readInt32() throws EndOfDataException {
-                checkCanReadBytes(4);
+            private long readInt24() throws EndOfDataException {
+                int bytesToRead = 3;
+                checkCanReadBytes(bytesToRead);
                 long result = endianCodec.decodeInt32(buffer.data, currentOffset);
-                currentOffset += 4;
+                currentOffset += bytesToRead;
+                return (result << 40) >> 40;
+            }
+
+            private long readInt32() throws EndOfDataException {
+                int bytesToRead = 4;
+                checkCanReadBytes(bytesToRead);
+                long result = endianCodec.decodeInt32(buffer.data, currentOffset);
+                currentOffset += bytesToRead;
                 return result;
             }
 
-            long readInt64() throws EndOfDataException {
-                checkCanReadBytes(8);
+            private long readInt40() throws EndOfDataException {
+                int bytesToRead = 5;
+                checkCanReadBytes(bytesToRead);
                 long result = endianCodec.decodeInt64(buffer.data, currentOffset);
-                currentOffset += 8;
+                currentOffset += bytesToRead;
+                return (result << 24) >> 24;
+            }
+
+            private long readInt48() throws EndOfDataException {
+                int bytesToRead = 6;
+                checkCanReadBytes(bytesToRead);
+                long result = endianCodec.decodeInt64(buffer.data, currentOffset);
+                currentOffset += bytesToRead;
+                return (result << 16) >> 16;
+            }
+
+            private long readInt56() throws EndOfDataException {
+                int bytesToRead = 7;
+                checkCanReadBytes(bytesToRead);
+                long result = endianCodec.decodeInt64(buffer.data, currentOffset);
+                currentOffset += bytesToRead;
+                return (result << 8) >> 8;
+            }
+
+            private long readInt64() throws EndOfDataException {
+                int bytesToRead = 8;
+                checkCanReadBytes(bytesToRead);
+                long result = endianCodec.decodeInt64(buffer.data, currentOffset);
+                currentOffset += bytesToRead;
                 return result;
             }
 
-            long readInteger() throws EndOfDataException {
+            private long readInteger() throws EndOfDataException {
                 byte type = readType();
                 switch(type) {
                     case Types.INT16:
                         return readInt16();
+                    case Types.INT24:
+                        return readInt24();
                     case Types.INT32:
                         return readInt32();
+                    case Types.INT40:
+                        return readInt40();
+                    case Types.INT48:
+                        return readInt48();
+                    case Types.INT56:
+                        return readInt56();
                     case Types.INT64:
                         return readInt64();
-                    case Types.FLOAT32:
-                    case Types.FLOAT64:
-                    case Types.EMPTY:
-                    case Types.BYTES:
-                    case Types.STRING:
-                    case Types.LIST:
-                    case Types.MAP:
-                    case Types.END_CONTAINER:
-                        throw new IllegalStateException("Expected an integer type but got type " + type);
-                    default:
-                        return type;
                 }
+                if(type >= SMALLINT_MIN && type <= SMALLINT_MAX) {
+                    return type;
+                }
+                throw new IllegalStateException("Expected an integer type but got type " + type);
             }
 
-            double readFloat32() throws EndOfDataException {
+            private double readFloat32() throws EndOfDataException {
                 return Float.intBitsToFloat((int)readInt32());
             }
 
-            double readFloat64() throws EndOfDataException {
+            private double readFloat64() throws EndOfDataException {
                 return Double.longBitsToDouble(readInt64());
             }
 
-            int readLength() throws EndOfDataException {
+            private int readLength() throws EndOfDataException {
                 int length = (int)readInteger();
                 if(length < 0) {
                     throw new IllegalStateException("Invalid length: " + length);
@@ -570,7 +651,7 @@ public class BinaryCodec {
                 return length;
             }
 
-            int readAndVerifyByteArrayLength() throws EndOfDataException {
+            private int readAndVerifyByteArrayLength() throws EndOfDataException {
                 int length = readLength();
                 try {
                     checkCanReadBytes(length);
@@ -588,8 +669,12 @@ public class BinaryCodec {
                 return buffer.newView(startOffst, currentOffset);
             }
 
-            @Nonnull String readString() throws EndOfDataException {
+            private @Nonnull String readString() throws EndOfDataException {
                 return readBytes().utf8String();
+            }
+
+            private boolean hasObject() {
+                return currentOffset < buffer.endOffset;
             }
 
             private @Nullable Object readObject() throws EndOfDataException {
@@ -597,8 +682,16 @@ public class BinaryCodec {
                 switch (type) {
                     case Types.INT16:
                         return readInt16();
+                    case Types.INT24:
+                        return readInt24();
                     case Types.INT32:
                         return readInt32();
+                    case Types.INT40:
+                        return readInt40();
+                    case Types.INT48:
+                        return readInt48();
+                    case Types.INT56:
+                        return readInt56();
                     case Types.INT64:
                         return readInt64();
                     case Types.FLOAT32:
@@ -615,6 +708,10 @@ public class BinaryCodec {
                         return readMap();
                     case Types.EMPTY:
                         return null;
+                    case Types.FALSE:
+                        return false;
+                    case Types.TRUE:
+                        return true;
                     case Types.END_CONTAINER:
                         return END_CONTAINER_MARKER;
                     default:
@@ -622,7 +719,7 @@ public class BinaryCodec {
                 }
             }
 
-            @Nonnull List<Object> readList() {
+            private @Nonnull List<Object> readList() {
                 List<Object> list = new LinkedList<>();
                 Object value;
                 try {
@@ -637,7 +734,7 @@ public class BinaryCodec {
                 return list;
             }
 
-            @Nonnull Map<Object, Object> readMap() {
+            private @Nonnull Map<Object, Object> readMap() {
                 Map<Object, Object> map = new HashMap<>();
                 Object key;
                 try {

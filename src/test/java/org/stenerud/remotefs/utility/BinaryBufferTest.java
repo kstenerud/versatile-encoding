@@ -132,7 +132,7 @@ public class BinaryBufferTest {
 
     @Test
     public void testToString() throws Exception {
-        String expected = "[74, 65, 73, 74]";
+        String expected = "[74,65,73,74]";
         BinaryBuffer buffer = new BinaryBuffer("test".getBytes("UTF-8"));
         String actual = buffer.toString();
         assertEquals(expected, actual);

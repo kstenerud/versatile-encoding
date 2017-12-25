@@ -1,4 +1,4 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.codec;
 
 public class LittleEndianCodec {
     public int encodeInt16(int value, byte[] buffer, int offset) {

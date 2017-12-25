@@ -1,15 +1,14 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.codec;
 
 import org.junit.Test;
+import org.stenerud.remotefs.codec.MessageCodec;
 import org.stenerud.remotefs.message.ExceptionMessageSpecification;
 import org.stenerud.remotefs.message.ResourceMessageSpecification;
 import org.stenerud.remotefs.message.StatusMessageSpecification;
 import org.stenerud.remotefs.utility.BinaryBuffer;
 import org.stenerud.remotefs.utility.DeepEquality;
-import org.stenerud.remotefs.utility.Parameters;
-import org.stenerud.remotefs.utility.Specification;
-
-import java.util.LinkedList;
+import org.stenerud.remotefs.message.Parameters;
+import org.stenerud.remotefs.message.Specification;
 
 import static org.junit.Assert.assertTrue;
 

@@ -1,6 +1,7 @@
 package org.stenerud.remotefs.utility;
 
 import org.junit.Test;
+import org.stenerud.remotefs.utility.TypeConverter;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;

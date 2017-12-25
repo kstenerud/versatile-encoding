@@ -1,6 +1,9 @@
-package org.stenerud.remotefs.utility;
+package org.stenerud.remotefs.message;
 
 import org.stenerud.remotefs.NotFoundException;
+import org.stenerud.remotefs.utility.BinaryBuffer;
+import org.stenerud.remotefs.utility.StrictMap;
+import org.stenerud.remotefs.utility.TypeConverter;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -8,15 +11,26 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Message and function parameters.
  */
 public class Parameters implements Iterable<Object> {
-    private static final Map<Specification.Type, Class> TYPE_TO_JAVA_CLASS = new HashMap<>();
+    private static final Map<Specification.Type, Class> TYPE_TO_CLASS = new HashMap<>();
+    private static final Map<Class<?>, Specification.Type> CLASS_TO_TYPE = new StrictMap<>(ConcurrentHashMap::new);
     static {
-        TYPE_TO_JAVA_CLASS.put(Specification.Type.INTEGER, Long.class);
-        TYPE_TO_JAVA_CLASS.put(Specification.Type.FLOAT, Double.class);
+        TYPE_TO_CLASS.put(Specification.Type.INTEGER, Long.class);
+        TYPE_TO_CLASS.put(Specification.Type.FLOAT, Double.class);
+
+        CLASS_TO_TYPE.put(Boolean.class, Specification.Type.BOOLEAN);
+        CLASS_TO_TYPE.put(Long.class, Specification.Type.INTEGER);
+        CLASS_TO_TYPE.put(Double.class, Specification.Type.FLOAT);
+        CLASS_TO_TYPE.put(String.class, Specification.Type.STRING);
+        CLASS_TO_TYPE.put(byte[].class, Specification.Type.BYTES);
+        CLASS_TO_TYPE.put(List.class, Specification.Type.LIST);
+        CLASS_TO_TYPE.put(Map.class, Specification.Type.MAP);
+        CLASS_TO_TYPE.put(BinaryBuffer.class, Specification.Type.BYTES);
     }
 
     private final Specification specification;
@@ -88,7 +102,7 @@ public class Parameters implements Iterable<Object> {
     }
 
     private Object convert(@Nullable Object value, @Nonnull Specification.Type type) {
-        Class destClass = TYPE_TO_JAVA_CLASS.get(type);
+        Class destClass = TYPE_TO_CLASS.get(type);
         if(destClass != null) {
             value = typeConverter.convert(value, destClass);
         }
@@ -164,7 +178,7 @@ public class Parameters implements Iterable<Object> {
 
         Specification.Type actualType;
         try {
-            actualType = TypeMappings.getType(value.getClass());
+            actualType = getBaseType(value.getClass());
         } catch(NotFoundException e) {
             throw new ValidationException(paramSpec.name + ": Could not get type for value " + value + ": " + e.getMessage());
         }
@@ -187,6 +201,21 @@ public class Parameters implements Iterable<Object> {
     static class ValidationException extends IllegalArgumentException {
         ValidationException(String message) {
             super(message);
+        }
+    }
+
+    private static Specification.Type getBaseType(Class javaClass) {
+        try {
+            return CLASS_TO_TYPE.get(javaClass);
+        } catch(NotFoundException e) {
+            for(Map.Entry<Class<?>, Specification.Type> entry: CLASS_TO_TYPE.entrySet()) {
+                if(entry.getKey().isAssignableFrom(javaClass)) {
+                    Specification.Type type = entry.getValue();
+                    CLASS_TO_TYPE.put(javaClass, type);
+                    return type;
+                }
+            }
+            throw e;
         }
     }
 }

@@ -1,7 +1,5 @@
 package org.stenerud.remotefs.message;
 
-import org.stenerud.remotefs.utility.Specification;
-
 public class StatusMessageSpecification extends Specification {
     public static final String JOB_ID = "job_id";
     public static final String COMPLETION = "percent_complete";

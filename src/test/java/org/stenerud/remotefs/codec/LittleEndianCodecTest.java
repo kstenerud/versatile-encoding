@@ -1,6 +1,7 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.codec;
 
 import org.junit.Test;
+import org.stenerud.remotefs.codec.LittleEndianCodec;
 import org.stenerud.remotefs.utility.BinaryBuffer;
 import org.stenerud.remotefs.utility.DeepEquality;
 

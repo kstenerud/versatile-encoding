@@ -1,7 +1,5 @@
 package org.stenerud.remotefs.message;
 
-import org.stenerud.remotefs.utility.Specification;
-
 public class ResourceMessageSpecification extends Specification {
     public static final String STREAM_ID = "stream_id";
     public static final String CHUNK_COUNT = "chunk_count";

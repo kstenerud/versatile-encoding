@@ -1,12 +1,12 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.codec;
 
 import junit.framework.AssertionFailedError;
 import org.junit.Test;
+import org.stenerud.remotefs.codec.BinaryCodec;
 import org.stenerud.remotefs.utility.BinaryBuffer;
 import org.stenerud.remotefs.utility.DeepEquality;
 import org.stenerud.remotefs.utility.ObjectHolder;
 
-import java.nio.ByteBuffer;
 import java.util.*;
 
 import static org.junit.Assert.*;

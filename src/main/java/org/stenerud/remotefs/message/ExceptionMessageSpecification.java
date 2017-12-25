@@ -1,7 +1,5 @@
 package org.stenerud.remotefs.message;
 
-import org.stenerud.remotefs.utility.Specification;
-
 public class ExceptionMessageSpecification extends Specification {
     public static final String CONTEXT_ID = "context_id";
     public static final String TYPE = "type";

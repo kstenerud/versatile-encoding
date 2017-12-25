@@ -1,6 +1,8 @@
-package org.stenerud.remotefs.utility;
+package org.stenerud.remotefs.message;
 
 import org.stenerud.remotefs.NotFoundException;
+import org.stenerud.remotefs.utility.Named;
+import org.stenerud.remotefs.utility.StrictMap;
 
 import javax.annotation.Nonnull;
 import java.util.*;

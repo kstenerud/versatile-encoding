@@ -1,4 +1,4 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.codec;
 
 import javax.annotation.Nonnull;
 

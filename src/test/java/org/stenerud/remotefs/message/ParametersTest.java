@@ -1,7 +1,10 @@
-package org.stenerud.remotefs.utility;
+package org.stenerud.remotefs.message;
 
 import org.junit.Test;
 import org.stenerud.remotefs.NotFoundException;
+import org.stenerud.remotefs.message.Parameters;
+import org.stenerud.remotefs.message.Specification;
+import org.stenerud.remotefs.utility.DeepEquality;
 
 import static org.junit.Assert.*;
 

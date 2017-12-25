@@ -1,6 +1,7 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.codec;
 
 import org.junit.Test;
+import org.stenerud.remotefs.codec.IntegerCodec;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;

@@ -1,4 +1,4 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.codec;
 
 import org.stenerud.remotefs.utility.BinaryBuffer;
 

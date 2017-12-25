@@ -1,8 +1,8 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.codec;
 
 import org.stenerud.remotefs.utility.BinaryBuffer;
-import org.stenerud.remotefs.utility.Parameters;
-import org.stenerud.remotefs.utility.Specification;
+import org.stenerud.remotefs.message.Parameters;
+import org.stenerud.remotefs.message.Specification;
 import org.stenerud.remotefs.utility.StrictMap;
 
 import javax.annotation.Nonnull;

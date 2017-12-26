@@ -59,8 +59,8 @@ public class BinaryCodec {
 
     public static class Encoder {
         private final LittleEndianCodec endianCodec;
-        protected final BinaryBuffer buffer;
-        protected int currentOffset;
+        final BinaryBuffer buffer;
+        int currentOffset;
 
         Encoder(@Nonnull BinaryBuffer buffer) {
             this.buffer = buffer;
@@ -168,10 +168,8 @@ public class BinaryCodec {
                 currentOffset = oldOffset;
                 throw new NoRoomException();
             }
-            byte[] bufferData = buffer.data;
-            for (int srcI = startOffset; srcI < endOffset; srcI++) {
-                bufferData[currentOffset++] = value[srcI];
-            }
+            buffer.copyFrom(value,startOffset, currentOffset, length);
+            currentOffset += length;
             return currentOffset - oldOffset;
         }
 
@@ -458,9 +456,9 @@ public class BinaryCodec {
 
         public class ByteStream {
             // type BYTES, type INT32, 32-bit length
-            protected final int typeAndLengthOffset = 6;
-            protected final BinaryBuffer view;
-            protected int viewOffset;
+            final int typeAndLengthOffset = 6;
+            final BinaryBuffer view;
+            int viewOffset;
 
             private ByteStream() throws NoRoomException {
                 this(Types.BYTES);

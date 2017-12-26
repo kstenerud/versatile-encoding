@@ -50,11 +50,9 @@ public interface IntegerCodec {
             }
             value <<= 1;
             if(value <= 0xff) {
-                endianCodec.encodeInt8(offset, value);
-                return 1;
+                return endianCodec.encodeInt8(offset, value);
             }
-            endianCodec.encodeInt16(offset, value | 1);
-            return 2;
+            return endianCodec.encodeInt16(offset, value | 1);
         }
 
         @Override
@@ -103,13 +101,9 @@ public interface IntegerCodec {
             }
             value <<= 1;
             if(value <= 0xff) {
-                endianCodec.encodeInt8(offset, value);
-                return 1;
+                return endianCodec.encodeInt8(offset, value);
             }
-            int lastByte = endianCodec.decodeInt8(offset+3);
-            endianCodec.encodeInt32(offset, value | 1);
-            endianCodec.encodeInt8(offset+3, lastByte);
-            return 3;
+            return endianCodec.encodeInt24(offset, value | 1);
         }
 
         @Override

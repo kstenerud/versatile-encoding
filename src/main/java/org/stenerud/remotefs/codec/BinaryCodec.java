@@ -9,10 +9,12 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.chrono.ChronoZonedDateTime;
+import java.time.temporal.ChronoField;
+import java.util.*;
 
 /**
  * Converts to/from a compact binary format.
@@ -39,10 +41,10 @@ public class BinaryCodec {
         byte LIST          = (byte)0x77;
         byte MAP           = (byte)0x78;
         byte END_CONTAINER = (byte)0x79;
-//        byte DATE_DAYS     = (byte)0x7a;
-//        byte DATE_SECONDS  = (byte)0x7b;
-//        byte DATE_MSECONDS = (byte)0x7c;
-//        byte DATE_USECONDS = (byte)0x7d;
+        byte DATE_DAYS     = (byte)0x7a;
+        byte DATE_SECONDS  = (byte)0x7b;
+        byte DATE_MSECONDS = (byte)0x7c;
+        byte DATE_USECONDS = (byte)0x7d;
         byte FALSE         = (byte)0x7e;
         byte TRUE          = (byte)0x7f;
     }
@@ -222,6 +224,10 @@ public class BinaryCodec {
                 return writeBoolean((boolean)value);
             } else if(value instanceof Decimal128Holder) {
                 return writeDecimal128((Decimal128Holder)value);
+            } else if(value instanceof Date) {
+                return writeDate((Date)value);
+            } else if(value instanceof Instant) {
+                return writeDate((Instant) value);
             } else {
                 throw new IllegalArgumentException("Don't know how to encode type " + value.getClass());
             }
@@ -306,6 +312,63 @@ public class BinaryCodec {
             } else {
                 return writeFloat64(value);
             }
+        }
+
+        private int writeDateDay(int year, int month, int day) throws NoRoomException {
+            if(day < 1 || day > 31) {
+                throw new IllegalArgumentException("Day is invalid: " + day);
+            }
+            if(month < 1 || month > 12) {
+                throw new IllegalArgumentException("Month is invalid: " + month);
+            }
+            int field = day | (month << 5) | (year << 9);
+            return writeType(Types.DATE_DAYS) + write32(field);
+        }
+
+        private int writeDateSeconds(long seconds) throws NoRoomException {
+            return writeType(Types.DATE_SECONDS) + write48(seconds);
+        }
+
+        private int writeDateMilliseconds(long seconds) throws NoRoomException {
+            return writeType(Types.DATE_MSECONDS) + write64(seconds);
+        }
+
+        private int writeDateMicroseconds(long seconds) throws NoRoomException {
+            return writeType(Types.DATE_USECONDS) + write64(seconds);
+        }
+
+        private int writeDate(@Nonnull Date date) throws NoRoomException {
+            Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            calendar.clear();
+            calendar.setTime(date);
+            long milliseconds = calendar.getTimeInMillis();
+            if(calendar.get(Calendar.MILLISECOND) == 0) {
+                if(calendar.get(Calendar.SECOND) == 0 && calendar.get(Calendar.MINUTE) == 0 && calendar.get(Calendar.HOUR) == 0) {
+                    return writeDateDay(calendar.get(Calendar.YEAR),
+                            calendar.get(Calendar.MONTH) + 1,
+                            calendar.get(Calendar.DAY_OF_MONTH));
+                }
+                return writeDateSeconds(milliseconds / 1000);
+            }
+            return writeDateMilliseconds(milliseconds);
+        }
+
+        private int writeDate(@Nonnull Instant instant) throws NoRoomException {
+            ZonedDateTime date = instant.atZone(ZoneOffset.UTC);
+            if(date.getLong(ChronoField.SECOND_OF_DAY) == 0) {
+                return writeDateDay((int)date.getLong(ChronoField.YEAR),
+                        (int)date.getLong(ChronoField.MONTH_OF_YEAR),
+                        (int)date.getLong(ChronoField.DAY_OF_MONTH));
+            }
+            long seconds = instant.getEpochSecond();
+            long microseconds = instant.getNano() / 1000;
+            if(microseconds == 0) {
+                return writeDateSeconds(seconds);
+            }
+            if(microseconds % 1000 == 0) {
+                return writeDateMilliseconds(seconds * 1000 + microseconds / 1000);
+            }
+            return writeDateMicroseconds(seconds * 1000000 + microseconds);
         }
 
         private int writeString(@Nonnull String value) throws NoRoomException {
@@ -659,6 +722,32 @@ public class BinaryCodec {
                 return readBytes().utf8String();
             }
 
+            private @Nonnull Date readDateDays() throws EndOfDataException {
+                int field = (int)readInt32();
+                int day = field & 0x1f;
+                int month = (field>>5) & 0x0f;
+                int year = field >> 9;
+                Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+                calendar.clear();
+                calendar.set(Calendar.YEAR, year);
+                calendar.set(Calendar.MONTH, month - 1);
+                calendar.set(Calendar.DAY_OF_MONTH, day);
+                return calendar.getTime();
+            }
+
+            private @Nonnull Date readDateSeconds() throws EndOfDataException {
+                return new Date(readInt48() * 1000);
+            }
+
+            private @Nonnull Date readDateMilliseconds() throws EndOfDataException {
+                return new Date(readInt64());
+            }
+
+            private @Nonnull Instant readDateMicroseconds() throws EndOfDataException {
+                long microseconds = readInt64();
+                return Instant.ofEpochSecond(microseconds / 1000000, (microseconds % 1000000) * 1000);
+            }
+
             private boolean hasObject() {
                 return currentOffset < buffer.endOffset;
             }
@@ -686,6 +775,14 @@ public class BinaryCodec {
                         return readFloat64();
                     case Types.DECIMAL128:
                         return readDecimal128();
+                    case Types.DATE_DAYS:
+                        return readDateDays();
+                    case Types.DATE_SECONDS:
+                        return readDateSeconds();
+                    case Types.DATE_MSECONDS:
+                        return readDateMilliseconds();
+                    case Types.DATE_USECONDS:
+                        return readDateMicroseconds();
                     case Types.BYTES:
                         return readBytes();
                     case Types.STRING:

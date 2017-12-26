@@ -7,6 +7,9 @@ import org.stenerud.remotefs.utility.DeepEquality;
 import org.stenerud.remotefs.utility.Decimal128Holder;
 import org.stenerud.remotefs.utility.ObjectHolder;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.*;
 
 import static org.junit.Assert.*;
@@ -295,6 +298,10 @@ public class BinaryCodecTest {
         encoder.writeObject(new byte[100]);
     }
 
+    private Date parseDate(String str) throws ParseException {
+        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").parse(str);
+    }
+
     @Test
     public void testEncodeDecode() throws Exception {
         assertEncodeDecode((byte)1);
@@ -336,6 +343,13 @@ public class BinaryCodecTest {
         assertEncodeDecode(true);
         assertEncodeDecode(false);
         assertEncodeDecode(new Decimal128Holder(100, 10000000000000L));
+        assertEncodeDecode(Instant.parse("2017-12-03T10:15:30.01Z"));
+        assertEncodeDecode(Instant.parse("2017-12-03T10:15:30.00Z"));
+        assertEncodeDecode(Instant.parse("2017-12-03T00:00:00.00Z"));
+        assertEncodeDecode(Instant.parse("2017-12-03T10:15:30.000001Z"));
+        assertEncodeDecode(parseDate("2017-12-03T10:15:30.001-0000"));
+        assertEncodeDecode(parseDate("2017-12-03T10:15:30.000-0000"));
+        assertEncodeDecode(parseDate("2017-12-03T00:00:00.000-0000"));
 
         List list = new LinkedList();
         list.add((byte)1);

@@ -5,6 +5,7 @@ import junit.framework.AssertionFailedError;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -73,6 +74,13 @@ public class DeepEquality {
         if(expected instanceof Number) {
             assertNumberEquality((Number)expected, (Number)actual);
             return;
+        }
+
+        // Dates
+        if(expected instanceof Date && actual instanceof Instant) {
+            expected = Instant.ofEpochMilli(((Date) expected).getTime());
+        } else if(expected instanceof Instant && actual instanceof Date) {
+            actual = Instant.ofEpochMilli(((Date) actual).getTime());
         }
 
         // Everything else
@@ -227,6 +235,12 @@ public class DeepEquality {
             return;
         }
         if(expected instanceof Set && actual instanceof  Set) {
+            return;
+        }
+        if(expected instanceof Instant && actual instanceof Date) {
+            return;
+        }
+        if(expected instanceof Date && actual instanceof Instant) {
             return;
         }
 

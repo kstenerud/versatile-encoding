@@ -90,12 +90,7 @@ public class MessageCodec {
         offset += typeCodec.getEncodedLength(type);
         Specification specification = typeToSpec.get(type);
         Parameters parameters = new Parameters(specification);
-        BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(new BinaryCodec.Decoder.Visitor() {
-            @Override
-            public void onValue(Object value) {
-                parameters.add(value);
-            }
-        });
+        BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(parameters::add);
         decoder.feed(buffer.newView(offset));
 
         parameters.verifyCompleteness();

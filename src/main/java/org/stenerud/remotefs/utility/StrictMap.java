@@ -5,10 +5,8 @@ import org.stenerud.remotefs.NotFoundException;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -22,8 +20,8 @@ import java.util.function.Supplier;
 public class StrictMap<K, V> implements Map<K, V> {
     private Map<K, V> map;
 
-    public StrictMap(@Nonnull Supplier<? extends Map> supplier) {
-        map = (Map)supplier.get();
+    public StrictMap(@Nonnull Supplier<? extends Map<K, V>> supplier) {
+        map = supplier.get();
     }
 
     @Override
@@ -70,7 +68,7 @@ public class StrictMap<K, V> implements Map<K, V> {
     }
 
     @Override
-    public void putAll(Map<? extends K, ? extends V> map) {
+    public void putAll(@Nonnull Map<? extends K, ? extends V> map) {
         this.map.putAll(map);
     }
 
@@ -80,17 +78,17 @@ public class StrictMap<K, V> implements Map<K, V> {
     }
 
     @Override
-    public Set<K> keySet() {
+    public @Nonnull Set<K> keySet() {
         return map.keySet();
     }
 
     @Override
-    public Collection<V> values() {
+    public @Nonnull Collection<V> values() {
         return map.values();
     }
 
     @Override
-    public Set<Entry<K, V>> entrySet() {
+    public @Nonnull Set<Entry<K, V>> entrySet() {
         return map.entrySet();
     }
 

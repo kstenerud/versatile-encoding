@@ -80,7 +80,7 @@ public class LittleEndianCodec {
         return buffer.data[offset];
     }
 
-    public long decodeInt8Long(int offset) {
+    private long decodeInt8Long(int offset) {
         return decodeInt8(offset);
     }
 

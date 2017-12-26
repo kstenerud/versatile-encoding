@@ -38,8 +38,8 @@ public class TypeConverter {
         return null;
     }
 
-    private static interface NumericConverter {
-        public Object convert(Object object);
+    private interface NumericConverter {
+        Object convert(Object object);
     }
     private static final Map<Class, Class> PROMOTIONS = new HashMap<>();
     private static final Map<Class, NumericConverter> LONG_CONVERTERS = new HashMap<>();
@@ -54,88 +54,32 @@ public class TypeConverter {
         CONVERTERS_BY_DEST_TYPE.put(Long.class, LONG_CONVERTERS);
         CONVERTERS_BY_DEST_TYPE.put(Double.class, DOUBLE_CONVERTERS);
 
-        LONG_CONVERTERS.put(Byte.class, new NumericConverter() {
-            @Override
-            public Object convert(Object object) {
-                return (long) (byte) object;
+        LONG_CONVERTERS.put(Byte.class, object -> (long) (byte) object);
+        LONG_CONVERTERS.put(Short.class, object -> (long) (short) object);
+        LONG_CONVERTERS.put(Integer.class, object -> (long) (int) object);
+        LONG_CONVERTERS.put(Long.class, object -> object);
+        LONG_CONVERTERS.put(Float.class, object -> {
+            float asFloat = (float)object;
+            long asLong = (long)asFloat;
+            if(asLong != asFloat) {
+                throw new IllegalArgumentException("Cannot convert " + object + " to type long");
             }
+            return asLong;
         });
-        LONG_CONVERTERS.put(Short.class, new NumericConverter() {
-            @Override
-            public Object convert(Object object) {
-                return (long) (short) object;
+        LONG_CONVERTERS.put(Double.class, object -> {
+            double asDouble = (double)object;
+            long asLong = (long)asDouble;
+            if(asLong != asDouble) {
+                throw new IllegalArgumentException("Cannot convert " + object + " to type long");
             }
-        });
-        LONG_CONVERTERS.put(Integer.class, new NumericConverter() {
-            @Override
-            public Object convert(Object object) {
-                return (long) (int) object;
-            }
-        });
-        LONG_CONVERTERS.put(Long.class, new NumericConverter() {
-            @Override
-            public Object convert(Object object) {
-                return object;
-            }
-        });
-        LONG_CONVERTERS.put(Float.class, new NumericConverter() {
-            @Override
-            public Object convert(Object object) {
-                float asFloat = (float)object;
-                long asLong = (long)asFloat;
-                if(asLong != asFloat) {
-                    throw new IllegalArgumentException("Cannot convert " + object + " to type long");
-                }
-                return asLong;
-            }
-        });
-        LONG_CONVERTERS.put(Double.class, new NumericConverter() {
-            @Override
-            public Object convert(Object object) {
-                double asDouble = (double)object;
-                long asLong = (long)asDouble;
-                if(asLong != asDouble) {
-                    throw new IllegalArgumentException("Cannot convert " + object + " to type long");
-                }
-                return asLong;
-            }
+            return asLong;
         });
 
-        DOUBLE_CONVERTERS.put(Byte.class, new NumericConverter() {
-            @Override
-            public Object convert(Object object) {
-                return (double) (byte) object;
-            }
-        });
-        DOUBLE_CONVERTERS.put(Short.class, new NumericConverter() {
-            @Override
-            public Object convert(Object object) {
-                return (double) (short) object;
-            }
-        });
-        DOUBLE_CONVERTERS.put(Integer.class, new NumericConverter() {
-            @Override
-            public Object convert(Object object) {
-                return (double) (int) object;
-            }
-        });
-        DOUBLE_CONVERTERS.put(Long.class, new NumericConverter() {
-            @Override
-            public Object convert(Object object) {
-                return (double) (long) object;
-            }
-        });
-        DOUBLE_CONVERTERS.put(Float.class, new NumericConverter() {
-            @Override
-            public Object convert(Object object) {
-                return (double) (float) object;
-            }
-        });
-        DOUBLE_CONVERTERS.put(Double.class, new NumericConverter() {
-            @Override
-            public Object convert(Object object) {
-                return object;
-            }
-        });
+        DOUBLE_CONVERTERS.put(Byte.class, object -> (double) (byte) object);
+        DOUBLE_CONVERTERS.put(Short.class, object -> (double) (short) object);
+        DOUBLE_CONVERTERS.put(Integer.class, object -> (double) (int) object);
+        DOUBLE_CONVERTERS.put(Long.class, object -> (double) (long) object);
+        DOUBLE_CONVERTERS.put(Float.class, object -> (double) (float) object);
+        DOUBLE_CONVERTERS.put(Double.class, object -> object);
     }
 }

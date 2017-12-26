@@ -12,7 +12,6 @@ import java.io.UnsupportedEncodingException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.time.chrono.ChronoZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.util.*;
 
@@ -23,7 +22,7 @@ public class BinaryCodec {
     private static final int SMALLINT_MIN = (byte)0x89;
     private static final int SMALLINT_MAX = (byte)0x74;
 
-    public interface Types {
+    public interface EncodedType {
         byte STRING        = (byte)0x75;
         byte BYTES         = (byte)0x76;
         byte LIST          = (byte)0x77;
@@ -234,7 +233,7 @@ public class BinaryCodec {
         }
 
         private int writeBoolean(boolean value) throws NoRoomException {
-            return writeType(value ? Types.TRUE : Types.FALSE);
+            return writeType(value ? EncodedType.TRUE : EncodedType.FALSE);
         }
 
         private int writeIntegerSmall(long value) throws NoRoomException {
@@ -242,35 +241,35 @@ public class BinaryCodec {
         }
 
         private int writeInteger16(long value) throws NoRoomException {
-            return writeType(Types.INT16) + write16((short)value);
+            return writeType(EncodedType.INT16) + write16((short)value);
         }
 
         private int writeInteger24(long value) throws NoRoomException {
-            return writeType(Types.INT24) + write24((int)value);
+            return writeType(EncodedType.INT24) + write24((int)value);
         }
 
         private int writeInteger32(long value) throws NoRoomException {
-            return writeType(Types.INT32) + write32((int)value);
+            return writeType(EncodedType.INT32) + write32((int)value);
         }
 
         private int writeInteger40(long value) throws NoRoomException {
-            return writeType(Types.INT40) + write40(value);
+            return writeType(EncodedType.INT40) + write40(value);
         }
 
         private int writeInteger48(long value) throws NoRoomException {
-            return writeType(Types.INT48) + write48(value);
+            return writeType(EncodedType.INT48) + write48(value);
         }
 
         private int writeInteger56(long value) throws NoRoomException {
-            return writeType(Types.INT56) + write56(value);
+            return writeType(EncodedType.INT56) + write56(value);
         }
 
         private int writeInteger64(long value) throws NoRoomException {
-            return writeType(Types.INT64) + write64(value);
+            return writeType(EncodedType.INT64) + write64(value);
         }
 
         private int writeDecimal128(Decimal128Holder value) throws NoRoomException {
-            return writeType(Types.DECIMAL128) + write128(value);
+            return writeType(EncodedType.DECIMAL128) + write128(value);
         }
 
         private int writeInteger(long value) throws NoRoomException {
@@ -299,11 +298,11 @@ public class BinaryCodec {
         }
 
         private int writeFloat32(double value) throws NoRoomException {
-            return writeType(Types.FLOAT32) + write32(Float.floatToIntBits((float)value));
+            return writeType(EncodedType.FLOAT32) + write32(Float.floatToIntBits((float)value));
         }
 
         private int writeFloat64(double value) throws NoRoomException {
-            return writeType(Types.FLOAT64) + write64(Double.doubleToLongBits(value));
+            return writeType(EncodedType.FLOAT64) + write64(Double.doubleToLongBits(value));
         }
 
         private int writeFloat(double value) throws NoRoomException {
@@ -322,19 +321,19 @@ public class BinaryCodec {
                 throw new IllegalArgumentException("Month is invalid: " + month);
             }
             int field = day | (month << 5) | (year << 9);
-            return writeType(Types.DATE_DAYS) + write32(field);
+            return writeType(EncodedType.DATE_DAYS) + write32(field);
         }
 
         private int writeDateSeconds(long seconds) throws NoRoomException {
-            return writeType(Types.DATE_SECONDS) + write48(seconds);
+            return writeType(EncodedType.DATE_SECONDS) + write48(seconds);
         }
 
         private int writeDateMilliseconds(long seconds) throws NoRoomException {
-            return writeType(Types.DATE_MSECONDS) + write64(seconds);
+            return writeType(EncodedType.DATE_MSECONDS) + write64(seconds);
         }
 
         private int writeDateMicroseconds(long seconds) throws NoRoomException {
-            return writeType(Types.DATE_USECONDS) + write64(seconds);
+            return writeType(EncodedType.DATE_USECONDS) + write64(seconds);
         }
 
         private int writeDate(@Nonnull Date date) throws NoRoomException {
@@ -372,23 +371,23 @@ public class BinaryCodec {
         }
 
         private int writeString(@Nonnull String value) throws NoRoomException {
-            return writeType(Types.STRING) + writeData(stringToBytes(value));
+            return writeType(EncodedType.STRING) + writeData(stringToBytes(value));
         }
 
         private int writeBytes(@Nonnull BinaryBuffer value) throws NoRoomException {
-            return writeType(Types.BYTES) + writeData(value);
+            return writeType(EncodedType.BYTES) + writeData(value);
         }
 
         private int writeBytes(@Nonnull byte[] value) throws NoRoomException {
-            return writeType(Types.BYTES) + writeData(value);
+            return writeType(EncodedType.BYTES) + writeData(value);
         }
 
         private int writeEndContainer() throws NoRoomException {
-            return writeType(Types.END_CONTAINER);
+            return writeType(EncodedType.END_CONTAINER);
         }
 
         private int writeList(@Nonnull List value) throws NoRoomException {
-            int length = writeType(Types.LIST);
+            int length = writeType(EncodedType.LIST);
             for(Object o: value) {
                 length += writeObject(o);
             }
@@ -396,7 +395,7 @@ public class BinaryCodec {
         }
 
         private int writeMap(@Nonnull Map<Object, Object> value) throws NoRoomException {
-            int length = writeType(Types.MAP);
+            int length = writeType(EncodedType.MAP);
             for(Map.Entry entry: value.entrySet()) {
                 length += writeObject(entry.getKey());
                 length += writeObject(entry.getValue());
@@ -405,7 +404,7 @@ public class BinaryCodec {
         }
 
         private int writeEmpty() throws NoRoomException {
-            return writeType(Types.EMPTY);
+            return writeType(EncodedType.EMPTY);
         }
 
         private static @Nonnull byte[] stringToBytes(@Nonnull String string) {
@@ -436,7 +435,7 @@ public class BinaryCodec {
             private final Encoder encoder;
 
             private ListStream() throws NoRoomException {
-                writeType(Types.LIST);
+                writeType(EncodedType.LIST);
                 // Leave room for "end container" marker
                 this.encoder = new Encoder(buffer.newView(currentOffset, buffer.endOffset-1));
             }
@@ -459,7 +458,7 @@ public class BinaryCodec {
             private final Encoder encoder;
 
             private MapStream() throws NoRoomException {
-                writeType(Types.MAP);
+                writeType(EncodedType.MAP);
                 // Leave room for "end container" marker
                 this.encoder = new Encoder(buffer.newView(currentOffset, buffer.endOffset-1));
             }
@@ -481,7 +480,7 @@ public class BinaryCodec {
 
         public class StringStream extends ByteStream {
             private StringStream() throws NoRoomException {
-                super(Types.STRING);
+                super(EncodedType.STRING);
             }
 
             public int write(@Nonnull BinaryBuffer fromBuffer) {
@@ -501,7 +500,7 @@ public class BinaryCodec {
             int viewOffset;
 
             private ByteStream() throws NoRoomException {
-                this(Types.BYTES);
+                this(EncodedType.BYTES);
             }
 
             private ByteStream(byte type) throws NoRoomException {
@@ -663,19 +662,19 @@ public class BinaryCodec {
             private long readInteger() throws EndOfDataException {
                 byte type = readType();
                 switch(type) {
-                    case Types.INT16:
+                    case EncodedType.INT16:
                         return readInt16();
-                    case Types.INT24:
+                    case EncodedType.INT24:
                         return readInt24();
-                    case Types.INT32:
+                    case EncodedType.INT32:
                         return readInt32();
-                    case Types.INT40:
+                    case EncodedType.INT40:
                         return readInt40();
-                    case Types.INT48:
+                    case EncodedType.INT48:
                         return readInt48();
-                    case Types.INT56:
+                    case EncodedType.INT56:
                         return readInt56();
-                    case Types.INT64:
+                    case EncodedType.INT64:
                         return readInt64();
                 }
                 if(type >= SMALLINT_MIN && type <= SMALLINT_MAX) {
@@ -755,49 +754,49 @@ public class BinaryCodec {
             private @Nullable Object readObject() throws EndOfDataException {
                 byte type = readType();
                 switch (type) {
-                    case Types.INT16:
+                    case EncodedType.INT16:
                         return readInt16();
-                    case Types.INT24:
+                    case EncodedType.INT24:
                         return readInt24();
-                    case Types.INT32:
+                    case EncodedType.INT32:
                         return readInt32();
-                    case Types.INT40:
+                    case EncodedType.INT40:
                         return readInt40();
-                    case Types.INT48:
+                    case EncodedType.INT48:
                         return readInt48();
-                    case Types.INT56:
+                    case EncodedType.INT56:
                         return readInt56();
-                    case Types.INT64:
+                    case EncodedType.INT64:
                         return readInt64();
-                    case Types.FLOAT32:
+                    case EncodedType.FLOAT32:
                         return readFloat32();
-                    case Types.FLOAT64:
+                    case EncodedType.FLOAT64:
                         return readFloat64();
-                    case Types.DECIMAL128:
+                    case EncodedType.DECIMAL128:
                         return readDecimal128();
-                    case Types.DATE_DAYS:
+                    case EncodedType.DATE_DAYS:
                         return readDateDays();
-                    case Types.DATE_SECONDS:
+                    case EncodedType.DATE_SECONDS:
                         return readDateSeconds();
-                    case Types.DATE_MSECONDS:
+                    case EncodedType.DATE_MSECONDS:
                         return readDateMilliseconds();
-                    case Types.DATE_USECONDS:
+                    case EncodedType.DATE_USECONDS:
                         return readDateMicroseconds();
-                    case Types.BYTES:
+                    case EncodedType.BYTES:
                         return readBytes();
-                    case Types.STRING:
+                    case EncodedType.STRING:
                         return readString();
-                    case Types.LIST:
+                    case EncodedType.LIST:
                         return readList();
-                    case Types.MAP:
+                    case EncodedType.MAP:
                         return readMap();
-                    case Types.EMPTY:
+                    case EncodedType.EMPTY:
                         return null;
-                    case Types.FALSE:
+                    case EncodedType.FALSE:
                         return false;
-                    case Types.TRUE:
+                    case EncodedType.TRUE:
                         return true;
-                    case Types.END_CONTAINER:
+                    case EncodedType.END_CONTAINER:
                         return END_CONTAINER_MARKER;
                     default:
                         return (long) (byte) type;

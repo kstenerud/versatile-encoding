@@ -446,7 +446,6 @@ public class BinaryCodecTest {
             throw new AssertionFailedError("Should have caused IllegalStateException");
         } catch(IllegalStateException e) {
             // Expected
-            return;
         }
     }
 

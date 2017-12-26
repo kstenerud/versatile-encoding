@@ -3,7 +3,6 @@ package org.stenerud.remotefs.utility;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import java.io.UnsupportedEncodingException;
-import java.util.Arrays;
 import java.util.Objects;
 
 public class BinaryBuffer {
@@ -67,13 +66,13 @@ public class BinaryBuffer {
 
     private static final char[] HEX_VALUES = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
-    private static int MAX_LENGTH_FOR_TOSTRING = 100;
     @Override
     public @Nonnull String toString() {
+        final int maxLengthForToString = 100;
         int workingEndOffset = endOffset;
         String suffix = "";
-        if(length > MAX_LENGTH_FOR_TOSTRING) {
-            workingEndOffset = startOffset + MAX_LENGTH_FOR_TOSTRING;
+        if(length > maxLengthForToString) {
+            workingEndOffset = startOffset + maxLengthForToString;
             suffix = ", ...";
         }
         StringBuilder builder = new StringBuilder();

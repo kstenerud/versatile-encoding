@@ -24,18 +24,6 @@ public class BinaryCodec {
     private static final int SMALLINT_MAX = (byte)0x74;
 
     public interface Types {
-        byte EMPTY         = (byte)0x8a;
-        byte FLOAT32       = (byte)0x89;
-        byte FLOAT64       = (byte)0x88;
-        byte DECIMAL128    = (byte)0x87;
-        byte INT16         = (byte)0x86;
-        byte INT24         = (byte)0x85;
-        byte INT32         = (byte)0x84;
-        byte INT40         = (byte)0x83;
-        byte INT48         = (byte)0x82;
-        byte INT56         = (byte)0x81;
-        byte INT64         = (byte)0x80;
-
         byte STRING        = (byte)0x75;
         byte BYTES         = (byte)0x76;
         byte LIST          = (byte)0x77;
@@ -47,6 +35,18 @@ public class BinaryCodec {
         byte DATE_USECONDS = (byte)0x7d;
         byte FALSE         = (byte)0x7e;
         byte TRUE          = (byte)0x7f;
+
+        byte INT64         = (byte)0x80;
+        byte INT56         = (byte)0x81;
+        byte INT48         = (byte)0x82;
+        byte INT40         = (byte)0x83;
+        byte INT32         = (byte)0x84;
+        byte INT24         = (byte)0x85;
+        byte INT16         = (byte)0x86;
+        byte DECIMAL128    = (byte)0x87;
+        byte FLOAT64       = (byte)0x88;
+        byte FLOAT32       = (byte)0x89;
+        byte EMPTY         = (byte)0x8a;
     }
 
     static class EndOfDataException extends IOException {

@@ -1,6 +1,7 @@
 package org.stenerud.remotefs.codec;
 
 import org.stenerud.remotefs.utility.BinaryBuffer;
+import org.stenerud.remotefs.utility.Utf8Tool;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
@@ -399,56 +400,15 @@ public class BinaryCodec {
         }
 
         public class StringStream extends ByteStream {
-            private final byte MULTIBYTE_MASK = (byte)0x80;
-            private final byte MULTIBYTE_INITIATOR_MASK = (byte)0xc0;
-            private final byte TWO_BYTE_MASK = (byte)0xe0;
-            private final byte TWO_BYTE_MATCH = (byte)0xc0;
-            private final byte THREE_BYTE_MASK = (byte)0xf0;
-            private final byte THREE_BYTE_MATCH = (byte)0xe0;
-            private final byte FOUR_BYTE_MASK = (byte)0xf8;
-            private final byte FOUR_BYTE_MATCH = (byte)0xf0;
-
             private StringStream() throws NoRoomException {
                 super(Types.STRING);
-            }
-
-            private int offsetToLastFullUTF8Character() {
-                // Regular character
-                if(viewOffset == view.startOffset || (view.data[viewOffset-1] & MULTIBYTE_MASK) == 0) {
-                    return viewOffset;
-                }
-
-                for(int i = -1; i >= -4; i--) {
-                    byte currentByte = view.data[i + viewOffset];
-                    if((currentByte & MULTIBYTE_INITIATOR_MASK) == MULTIBYTE_INITIATOR_MASK) {
-                        int multibyteCount = -i;
-                        int expectedMultibyteCount;
-                        if((currentByte & TWO_BYTE_MASK) == TWO_BYTE_MATCH) {
-                            expectedMultibyteCount = 2;
-                        } else if((currentByte & THREE_BYTE_MASK) == THREE_BYTE_MATCH) {
-                            expectedMultibyteCount = 3;
-                        } else if((currentByte & FOUR_BYTE_MASK) == FOUR_BYTE_MATCH) {
-                            expectedMultibyteCount = 4;
-                        } else {
-                            throw new IllegalStateException("Malformed UTF-8 character");
-                        }
-                        if(multibyteCount == expectedMultibyteCount) {
-                            return viewOffset;
-                        }
-                        if(multibyteCount < expectedMultibyteCount) {
-                            return viewOffset - multibyteCount;
-                        }
-                        throw new IllegalStateException("Malformed UTF-8 character");
-                    }
-                }
-                throw new IllegalStateException("Malformed UTF-8 character");
             }
 
             public int write(@Nonnull BinaryBuffer fromBuffer) {
                 int beforeOffset = viewOffset;
                 int bytesWritten = super.write(fromBuffer);
                 if(bytesWritten < fromBuffer.length) {
-                    viewOffset = offsetToLastFullUTF8Character();
+                    viewOffset = Utf8Tool.offsetToLastFullUTF8Character(view.data, viewOffset, view.startOffset);
                 }
                 return viewOffset - beforeOffset;
             }

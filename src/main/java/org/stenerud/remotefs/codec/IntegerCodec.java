@@ -24,7 +24,7 @@ public interface IntegerCodec {
         public static final int MAX_LENGTH = 2;
         private final LittleEndianCodec endianCodec;
 
-        public OneTwo(LittleEndianCodec endianCodec) {
+        public OneTwo(@Nonnull LittleEndianCodec endianCodec) {
             this.endianCodec = endianCodec;
         }
 
@@ -75,7 +75,7 @@ public interface IntegerCodec {
         public static final int MAX_LENGTH = 3;
         private final LittleEndianCodec endianCodec;
 
-        public OneThree(LittleEndianCodec endianCodec) {
+        public OneThree(@Nonnull LittleEndianCodec endianCodec) {
             this.endianCodec = endianCodec;
         }
 

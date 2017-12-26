@@ -1,6 +1,7 @@
 package org.stenerud.remotefs.codec;
 
 import org.stenerud.remotefs.utility.BinaryBuffer;
+import org.stenerud.remotefs.utility.Decimal128Holder;
 import org.stenerud.remotefs.utility.Utf8Tool;
 
 import javax.annotation.CheckForNull;
@@ -24,7 +25,7 @@ public class BinaryCodec {
         byte EMPTY         = (byte)0x8a;
         byte FLOAT32       = (byte)0x89;
         byte FLOAT64       = (byte)0x88;
-//        byte DECIMAL128    = (byte)0x87;
+        byte DECIMAL128    = (byte)0x87;
         byte INT16         = (byte)0x86;
         byte INT24         = (byte)0x85;
         byte INT32         = (byte)0x84;
@@ -153,6 +154,16 @@ public class BinaryCodec {
             }
         }
 
+        private int write128(@Nonnull Decimal128Holder value) throws NoRoomException {
+            try {
+                int length = endianCodec.encodeInt128(currentOffset, value);
+                currentOffset += length;
+                return length;
+            } catch(IndexOutOfBoundsException e) {
+                throw new NoRoomException();
+            }
+        }
+
         private int writeType(byte type) throws NoRoomException {
             return write8(type);
         }
@@ -209,6 +220,8 @@ public class BinaryCodec {
                 return writeFloat32((float)value);
             } else if(value instanceof Boolean) {
                 return writeBoolean((boolean)value);
+            } else if(value instanceof Decimal128Holder) {
+                return writeDecimal128((Decimal128Holder)value);
             } else {
                 throw new IllegalArgumentException("Don't know how to encode type " + value.getClass());
             }
@@ -248,6 +261,10 @@ public class BinaryCodec {
 
         private int writeInteger64(long value) throws NoRoomException {
             return writeType(Types.INT64) + write64(value);
+        }
+
+        private int writeDecimal128(Decimal128Holder value) throws NoRoomException {
+            return writeType(Types.DECIMAL128) + write128(value);
         }
 
         private int writeInteger(long value) throws NoRoomException {
@@ -571,6 +588,15 @@ public class BinaryCodec {
                 return result;
             }
 
+            private @Nonnull
+            Decimal128Holder readDecimal128() throws EndOfDataException {
+                int bytesToRead = 16;
+                checkCanReadBytes(bytesToRead);
+                Decimal128Holder result = endianCodec.decodeInt128(currentOffset);
+                currentOffset += bytesToRead;
+                return result;
+            }
+
             private long readInteger() throws EndOfDataException {
                 byte type = readType();
                 switch(type) {
@@ -658,6 +684,8 @@ public class BinaryCodec {
                         return readFloat32();
                     case Types.FLOAT64:
                         return readFloat64();
+                    case Types.DECIMAL128:
+                        return readDecimal128();
                     case Types.BYTES:
                         return readBytes();
                     case Types.STRING:

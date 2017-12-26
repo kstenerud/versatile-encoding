@@ -1,68 +1,122 @@
 package org.stenerud.remotefs.codec;
 
+import org.stenerud.remotefs.utility.BinaryBuffer;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 public class LittleEndianCodec {
-    public int encodeInt16(int value, byte[] buffer, int offset) {
-        buffer[offset++] = (byte) value;
-        buffer[offset]   = (byte) (value >> 8);
+    private final BinaryBuffer buffer;
+    private final ByteBuffer byteBuffer;
+
+    public LittleEndianCodec(BinaryBuffer buffer) {
+        this.buffer = buffer;
+        this.byteBuffer = ByteBuffer.wrap(buffer.data, buffer.startOffset, buffer.length);
+        this.byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+    }
+
+    public int encodeInt8(int offset, int value) {
+        byteBuffer.put(offset, (byte)value);
+        return 1;
+    }
+
+    public int encodeInt16(int offset, int value) {
+        byteBuffer.putShort(offset, (short)value);
         return 2;
     }
 
-    public int encodeInt32(int value, byte[] buffer, int offset) {
-        buffer[offset++] = (byte) value;
-        buffer[offset++] = (byte) (value >> 8);
-        buffer[offset++] = (byte) (value >> 16);
-        buffer[offset]   = (byte) (value >> 24);
+    public int encodeInt24(int offset, int value) {
+        byteBuffer.putShort(offset, (short)value);
+        byteBuffer.put(offset+2, (byte)(value>>16));
+        return 3;
+    }
+
+    public int encodeInt32(int offset, int value) {
+        byteBuffer.putInt(offset, value);
         return 4;
     }
 
-    public int encodeInt64(long value, byte[] buffer, int offset) {
-        buffer[offset++] = (byte) value;
-        buffer[offset++] = (byte) (value >> 8);
-        buffer[offset++] = (byte) (value >> 16);
-        buffer[offset++] = (byte) (value >> 24);
-        buffer[offset++] = (byte) (value >> 32);
-        buffer[offset++] = (byte) (value >> 40);
-        buffer[offset++] = (byte) (value >> 48);
-        buffer[offset]   = (byte) (value >> 56);
+    public int encodeInt40(int offset, long value) {
+        byteBuffer.putInt(offset, (int)value);
+        byteBuffer.put(offset+4, (byte)(value>>32));
+        return 5;
+    }
+
+    public int encodeInt48(int offset, long value) {
+        byteBuffer.putInt(offset, (int)value);
+        byteBuffer.putShort(offset+4, (short) (value>>32));
+        return 6;
+    }
+
+    public int encodeInt56(int offset, long value) {
+        byteBuffer.putInt(offset, (int)value);
+        byteBuffer.putShort(offset+4, (short) (value>>32));
+        byteBuffer.put(offset+6, (byte)(value>>48));
+        return 7;
+    }
+
+    public int encodeInt64(int offset, long value) {
+        byteBuffer.putLong(offset, value);
         return 8;
     }
 
-    public int encodeFloat32(float value, byte[] buffer, int offset) {
-        return encodeInt32(Float.floatToIntBits(value), buffer, offset);
+    public int encodeFloat32(int offset, float value) {
+        return encodeInt32(offset, Float.floatToIntBits(value));
     }
 
-    public int encodeFloat64(double value, byte[] buffer, int offset) {
-        return encodeInt64(Double.doubleToLongBits(value), buffer, offset);
+    public int encodeFloat64(int offset, double value) {
+        return encodeInt64(offset, Double.doubleToLongBits(value));
     }
 
-    public int decodeInt16(byte[] buffer, int offset) {
-        return (short)(((((short)buffer[offset+1]) & 0xff) << 8) +
-                        (((short)buffer[offset]) & 0xff));
+    public int decodeInt8(int offset) {
+        return buffer.data[offset];
     }
 
-    public int decodeInt32(byte[] buffer, int offset) {
-        return ((((int)buffer[offset+3]) & 0xff) << 24) +
-                ((((int)buffer[offset+2]) & 0xff) << 16) +
-                ((((int)buffer[offset+1]) & 0xff) << 8) +
-                (((int)buffer[offset]) & 0xff);
+    public long decodeInt8Long(int offset) {
+        return decodeInt8(offset);
     }
 
-    public long decodeInt64(byte[] buffer, int offset) {
-        return ((((long)buffer[offset+7]) & 0xff) << 56) +
-                ((((long)buffer[offset+6]) & 0xff) << 48) +
-                ((((long)buffer[offset+5]) & 0xff) << 40) +
-                ((((long)buffer[offset+4]) & 0xff) << 32) +
-                ((((long)buffer[offset+3]) & 0xff) << 24) +
-                ((((long)buffer[offset+2]) & 0xff) << 16) +
-                ((((long)buffer[offset+1]) & 0xff) << 8) +
-                (((long)buffer[offset]) & 0xff);
+    public int decodeInt16(int offset) {
+        return byteBuffer.getShort(offset);
     }
 
-    public float decodeFloat32(byte[] buffer, int offset) {
-        return Float.intBitsToFloat(decodeInt32(buffer, offset));
+    private long decodeInt16Long(int offset) {
+        return decodeInt16(offset);
     }
 
-    public double decodeFloat64(byte[] buffer, int offset) {
-        return Double.longBitsToDouble(decodeInt64(buffer, offset));
+    public int decodeInt24(int offset) {
+        return (decodeInt16(offset) & 0xffff) | (decodeInt8(offset + 2) << 16);
+    }
+
+    public int decodeInt32(int offset) {
+        return byteBuffer.getInt(offset);
+    }
+
+    private long decodeInt32Long(int offset) {
+        return (long)byteBuffer.getInt(offset);
+    }
+
+    public long decodeInt40(int offset) {
+        return (decodeInt32Long(offset) & 0xffffffffL) | (decodeInt8Long(offset + 4) << 32);
+    }
+
+    public long decodeInt48(int offset) {
+        return (decodeInt32Long(offset) & 0xffffffffL) | (decodeInt16Long(offset + 4) << 32);
+    }
+
+    public long decodeInt56(int offset) {
+        return (decodeInt48(offset) & 0xffffffffffffL) | (decodeInt8Long(offset + 6) << 48);
+    }
+
+    public long decodeInt64(int offset) {
+        return byteBuffer.getLong(offset);
+    }
+
+    public float decodeFloat32(int offset) {
+        return Float.intBitsToFloat(decodeInt32(offset));
+    }
+
+    public double decodeFloat64(int offset) {
+        return Double.longBitsToDouble(decodeInt64(offset));
     }
 }

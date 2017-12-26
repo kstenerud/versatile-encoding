@@ -58,13 +58,14 @@ public class BinaryCodec {
     }
 
     public static class Encoder {
-        private final LittleEndianCodec endianCodec = new LittleEndianCodec();
+        private final LittleEndianCodec endianCodec;
         protected final BinaryBuffer buffer;
         protected int currentOffset;
 
         Encoder(@Nonnull BinaryBuffer buffer) {
             this.buffer = buffer;
             this.currentOffset = buffer.startOffset;
+            this.endianCodec = new LittleEndianCodec(buffer);
         }
 
         public @Nonnull BinaryBuffer newView() {
@@ -73,83 +74,80 @@ public class BinaryCodec {
 
         private int write8(byte value) throws NoRoomException {
             try {
-                buffer.data[currentOffset++] = value;
-                return 1;
-            } catch(ArrayIndexOutOfBoundsException e) {
+                int length = endianCodec.encodeInt8(currentOffset, value);
+                currentOffset += length;
+                return length;
+            } catch(IndexOutOfBoundsException e) {
                 throw new NoRoomException();
             }
         }
 
         private int write16(int value) throws NoRoomException {
             try {
-                int length = endianCodec.encodeInt16(value, buffer.data, currentOffset);
+                int length = endianCodec.encodeInt16(currentOffset, value);
                 currentOffset += length;
                 return length;
-            } catch(ArrayIndexOutOfBoundsException e) {
+            } catch(IndexOutOfBoundsException e) {
                 throw new NoRoomException();
             }
         }
 
         private int write24(int value) throws NoRoomException {
             try {
-                endianCodec.encodeInt32(value, buffer.data, currentOffset);
-                int length = 3;
+                int length = endianCodec.encodeInt24(currentOffset, value);
                 currentOffset += length;
                 return length;
-            } catch(ArrayIndexOutOfBoundsException e) {
+            } catch(IndexOutOfBoundsException e) {
                 throw new NoRoomException();
             }
         }
 
         private int write32(int value) throws NoRoomException {
             try {
-                int length = endianCodec.encodeInt32(value, buffer.data, currentOffset);
+                int length = endianCodec.encodeInt32(currentOffset, value);
                 currentOffset += length;
                 return length;
-            } catch(ArrayIndexOutOfBoundsException e) {
+            } catch(IndexOutOfBoundsException e) {
                 throw new NoRoomException();
             }
         }
 
         private int write40(long value) throws NoRoomException {
             try {
-                endianCodec.encodeInt64(value, buffer.data, currentOffset);
-                int length = 5;
+                int length = endianCodec.encodeInt40(currentOffset, value);
                 currentOffset += length;
                 return length;
-            } catch(ArrayIndexOutOfBoundsException e) {
+            } catch(IndexOutOfBoundsException e) {
                 throw new NoRoomException();
             }
         }
 
         private int write48(long value) throws NoRoomException {
             try {
-                endianCodec.encodeInt64(value, buffer.data, currentOffset);
-                int length = 6;
+                int length = endianCodec.encodeInt48(currentOffset, value);
                 currentOffset += length;
                 return length;
-            } catch(ArrayIndexOutOfBoundsException e) {
+            } catch(IndexOutOfBoundsException e) {
                 throw new NoRoomException();
             }
         }
 
         private int write56(long value) throws NoRoomException {
             try {
-                endianCodec.encodeInt64(value, buffer.data, currentOffset);
-                int length = 7;
+                int length = endianCodec.encodeInt56(currentOffset, value);
                 currentOffset += length;
                 return length;
-            } catch(ArrayIndexOutOfBoundsException e) {
+            } catch(IndexOutOfBoundsException e) {
                 throw new NoRoomException();
             }
         }
 
         private int write64(long value) throws NoRoomException {
             try {
-                int length = endianCodec.encodeInt64(value, buffer.data, currentOffset);
+                int length = endianCodec.encodeInt64(currentOffset, value);
                 currentOffset += length;
                 return length;
-            } catch(ArrayIndexOutOfBoundsException e) {
+            } catch(IndexOutOfBoundsException e) {
                 throw new NoRoomException();
             }
         }
@@ -531,13 +529,14 @@ public class BinaryCodec {
         }
 
         private static class Reader {
-            private final LittleEndianCodec endianCodec = new LittleEndianCodec();
+            private final LittleEndianCodec endianCodec;
             private final BinaryBuffer buffer;
             private int currentOffset;
 
             Reader(@Nonnull BinaryBuffer buffer) {
                 this.buffer = buffer;
                 this.currentOffset = buffer.startOffset;
+                this.endianCodec = new LittleEndianCodec(buffer);
             }
 
             private void checkCanReadBytes(int byteCount) throws EndOfDataException {
@@ -551,14 +550,17 @@ public class BinaryCodec {
             }
 
             private byte readInt8() throws EndOfDataException {
-                checkCanReadBytes(1);
-                return buffer.data[currentOffset++];
+                int bytesToRead = 1;
+                checkCanReadBytes(bytesToRead);
+                long result = endianCodec.decodeInt8(currentOffset);
+                currentOffset += bytesToRead;
+                return (byte)result;
             }
 
             private long readInt16() throws EndOfDataException {
                 int bytesToRead = 2;
                 checkCanReadBytes(bytesToRead);
-                long result = endianCodec.decodeInt16(buffer.data, currentOffset);
+                long result = endianCodec.decodeInt16(currentOffset);
                 currentOffset += bytesToRead;
                 return result;
             }
@@ -566,15 +568,15 @@ public class BinaryCodec {
             private long readInt24() throws EndOfDataException {
                 int bytesToRead = 3;
                 checkCanReadBytes(bytesToRead);
-                long result = endianCodec.decodeInt32(buffer.data, currentOffset);
+                long result = endianCodec.decodeInt24(currentOffset);
                 currentOffset += bytesToRead;
-                return (result << 40) >> 40;
+                return result;
             }
 
             private long readInt32() throws EndOfDataException {
                 int bytesToRead = 4;
                 checkCanReadBytes(bytesToRead);
-                long result = endianCodec.decodeInt32(buffer.data, currentOffset);
+                long result = endianCodec.decodeInt32(currentOffset);
                 currentOffset += bytesToRead;
                 return result;
             }
@@ -582,31 +584,31 @@ public class BinaryCodec {
             private long readInt40() throws EndOfDataException {
                 int bytesToRead = 5;
                 checkCanReadBytes(bytesToRead);
-                long result = endianCodec.decodeInt64(buffer.data, currentOffset);
+                long result = endianCodec.decodeInt40(currentOffset);
                 currentOffset += bytesToRead;
-                return (result << 24) >> 24;
+                return result;
             }
 
             private long readInt48() throws EndOfDataException {
                 int bytesToRead = 6;
                 checkCanReadBytes(bytesToRead);
-                long result = endianCodec.decodeInt64(buffer.data, currentOffset);
+                long result = endianCodec.decodeInt48(currentOffset);
                 currentOffset += bytesToRead;
-                return (result << 16) >> 16;
+                return result;
             }
 
             private long readInt56() throws EndOfDataException {
                 int bytesToRead = 7;
                 checkCanReadBytes(bytesToRead);
-                long result = endianCodec.decodeInt64(buffer.data, currentOffset);
+                long result = endianCodec.decodeInt56(currentOffset);
                 currentOffset += bytesToRead;
-                return (result << 8) >> 8;
+                return result;
             }
 
             private long readInt64() throws EndOfDataException {
                 int bytesToRead = 8;
                 checkCanReadBytes(bytesToRead);
-                long result = endianCodec.decodeInt64(buffer.data, currentOffset);
+                long result = endianCodec.decodeInt64(currentOffset);
                 currentOffset += bytesToRead;
                 return result;
             }

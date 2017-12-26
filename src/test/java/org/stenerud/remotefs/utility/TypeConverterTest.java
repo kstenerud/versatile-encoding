@@ -27,10 +27,6 @@ public class TypeConverterTest {
 
     @Test
     public void testPromote() {
-        printResult(0x00);
-        printResult(0x01);
-        printResult(0x42);
-
 //        for(int i = 0; i < 0x100; i++) {
 //            System.out.println(String.format("%02x", getResult(i) & 0xff));
 //        }

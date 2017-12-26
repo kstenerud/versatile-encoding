@@ -9,9 +9,9 @@ public interface IntegerCodec {
 
     public int getMaxEncodedLength();
 
-    public void encode(@Nonnull byte[] buffer, int offset, int value);
+    public int encode(int offset, int value);
 
-    public int decode(@Nonnull byte[] buffer, int offset);
+    public int decode(int offset);
 
     // One-Two encoding (little endian): vvvvvvvS vvvvvvvv
     // Where v = value, S = size bit.
@@ -20,7 +20,13 @@ public interface IntegerCodec {
     // 2-byte form supports values to 32k - 1
     public static class OneTwo implements IntegerCodec {
         private static final int MASKS[] = {0x0000007f, 0x00007fff};
-        private final LittleEndianCodec endianCodec = new LittleEndianCodec();
+        public static final int MAX_VALUE = MASKS[1];
+        public static final int MAX_LENGTH = 2;
+        private final LittleEndianCodec endianCodec;
+
+        public OneTwo(LittleEndianCodec endianCodec) {
+            this.endianCodec = endianCodec;
+        }
 
         @Override
         public int getMaxValue() {
@@ -29,7 +35,7 @@ public interface IntegerCodec {
 
         @Override
         public int getEncodedLength(int value) {
-            return value > MASKS[0] ? 2 : 1;
+            return (value<<1) > 0xff ? 2 : 1;
         }
 
         @Override
@@ -38,21 +44,22 @@ public interface IntegerCodec {
         }
 
         @Override
-        public void encode(@Nonnull byte[] buffer, int offset, int value) {
+        public int encode(int offset, int value) {
             if(value > getMaxValue()) {
                 throw new IllegalArgumentException("Value " + value + " is larger than maximum of " + getMaxValue());
             }
             value <<= 1;
-            buffer[offset] = (byte)value;
-            if(value > 0xff) {
-                buffer[offset] |= 1;
-                buffer[offset + 1] = (byte)(value >> 8);
+            if(value <= 0xff) {
+                endianCodec.encodeInt8(offset, value);
+                return 1;
             }
+            endianCodec.encodeInt16(offset, value | 1);
+            return 2;
         }
 
         @Override
-        public int decode(@Nonnull byte[] buffer, int offset) {
-            int value = endianCodec.decodeInt16(buffer, offset);
+        public int decode(int offset) {
+            int value = endianCodec.decodeInt16(offset);
             int sizeFlag = value & 1;
             value >>= 1;
             return value & MASKS[sizeFlag];
@@ -66,7 +73,13 @@ public interface IntegerCodec {
     // 3-byte form supports values to 8M - 1
     public static class OneThree implements IntegerCodec{
         private static final int MASKS[] = {0x0000007f, 0x007fffff};
-        private final LittleEndianCodec lowLevelCodec = new LittleEndianCodec();
+        public static final int MAX_VALUE = MASKS[1];
+        public static final int MAX_LENGTH = 3;
+        private final LittleEndianCodec endianCodec;
+
+        public OneThree(LittleEndianCodec endianCodec) {
+            this.endianCodec = endianCodec;
+        }
 
         @Override
         public int getMaxValue() {
@@ -75,7 +88,7 @@ public interface IntegerCodec {
 
         @Override
         public int getEncodedLength(int value) {
-            return value > MASKS[0] ? 3 : 1;
+            return (value<<1) > 0xff ? 3 : 1;
         }
 
         @Override
@@ -84,22 +97,24 @@ public interface IntegerCodec {
         }
 
         @Override
-        public void encode(@Nonnull byte[] buffer, int offset, int value) {
+        public int encode(int offset, int value) {
             if(value > getMaxValue()) {
                 throw new IllegalArgumentException("Value " + value + " is larger than maximum of " + getMaxValue());
             }
             value <<= 1;
-            buffer[offset] = (byte)value;
-            if(value > 0xff) {
-                buffer[offset] |= 1;
-                buffer[offset + 1] = (byte)(value >> 8);
-                buffer[offset + 2] = (byte)(value >> 16);
+            if(value <= 0xff) {
+                endianCodec.encodeInt8(offset, value);
+                return 1;
             }
+            int lastByte = endianCodec.decodeInt8(offset+3);
+            endianCodec.encodeInt32(offset, value | 1);
+            endianCodec.encodeInt8(offset+3, lastByte);
+            return 3;
         }
 
         @Override
-        public int decode(@Nonnull byte[] buffer, int offset) {
-            int value = lowLevelCodec.decodeInt32(buffer, offset);
+        public int decode(int offset) {
+            int value = endianCodec.decodeInt32(offset);
             int sizeFlag = value & 1;
             value >>= 1;
             return value & MASKS[sizeFlag];

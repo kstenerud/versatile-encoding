@@ -36,13 +36,10 @@ public class MessageCodec {
         // abort function call (id)
         // get schema (search params, as summary?)
     }
-    private static final IntegerCodec lengthCodec = new IntegerCodec.OneThree();
-    private static final IntegerCodec typeCodec = new IntegerCodec.OneTwo();
-    private static final int MAX_MESSAGE_CONTENTS_OFFSET = lengthCodec.getMaxEncodedLength() + typeCodec.getMaxEncodedLength();
     private final Map<Specification, Integer> specToType = new StrictMap<>(HashMap::new);
     private final Map<Integer, Specification> typeToSpec = new StrictMap<>(HashMap::new);
 
-    public static final int MAX_MESSAGE_TYPE = typeCodec.getMaxValue();
+    public static final int MAX_MESSAGE_TYPE = IntegerCodec.OneTwo.MAX_VALUE;
 
     public void registerSpecification(@Nonnull Specification spec, int type) {
         if(type > MAX_MESSAGE_TYPE) {
@@ -55,7 +52,12 @@ public class MessageCodec {
     public BinaryBuffer encode(@Nonnull Parameters parameters, @Nonnull BinaryBuffer buffer) throws BinaryCodec.NoRoomException {
         parameters.verifyCompleteness();
         int type = specToType.get(parameters.getSpecification());
-        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(buffer.newView(buffer.startOffset + MAX_MESSAGE_CONTENTS_OFFSET));
+        final int maxContentsOffset = IntegerCodec.OneTwo.MAX_LENGTH + IntegerCodec.OneThree.MAX_LENGTH;
+        BinaryBuffer offsetView = buffer.newView(buffer.startOffset + maxContentsOffset);
+        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(offsetView);
+        LittleEndianCodec endianCodec = new LittleEndianCodec(offsetView);
+        final IntegerCodec lengthCodec = new IntegerCodec.OneThree(endianCodec);
+        final IntegerCodec typeCodec = new IntegerCodec.OneTwo(endianCodec);
 
         for(Object value: parameters) {
             encoder.writeObject(value);
@@ -65,7 +67,7 @@ public class MessageCodec {
         int offset = encodedView.startOffset;
         int typeLength = typeCodec.getEncodedLength(type);
         offset -= typeLength;
-        typeCodec.encode(buffer.data, offset, type);
+        typeCodec.encode(offset, type);
         int length = encodedView.length + typeLength + 1;
         int lengthLength = lengthCodec.getEncodedLength(length);
         if(lengthLength > 1) {
@@ -73,15 +75,18 @@ public class MessageCodec {
             lengthLength = lengthCodec.getEncodedLength(length);
         }
         offset -= lengthLength;
-        lengthCodec.encode(buffer.data, offset, length);
+        lengthCodec.encode(offset, length);
         return buffer.newView(offset, encodedView.endOffset);
     }
 
     public @Nonnull Parameters decode(@Nonnull BinaryBuffer buffer) throws BinaryCodec.EndOfDataException {
+        LittleEndianCodec endianCodec = new LittleEndianCodec(buffer);
+        final IntegerCodec lengthCodec = new IntegerCodec.OneThree(endianCodec);
+        final IntegerCodec typeCodec = new IntegerCodec.OneTwo(endianCodec);
         int offset = buffer.startOffset;
-        int length = lengthCodec.decode(buffer.data, offset);
+        int length = lengthCodec.decode(offset);
         offset += lengthCodec.getEncodedLength(length);
-        int type = typeCodec.decode(buffer.data, offset);
+        int type = typeCodec.decode(offset);
         offset += typeCodec.getEncodedLength(type);
         Specification specification = typeToSpec.get(type);
         Parameters parameters = new Parameters(specification);

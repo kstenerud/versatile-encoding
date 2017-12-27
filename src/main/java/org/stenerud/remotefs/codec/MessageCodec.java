@@ -65,15 +65,11 @@ public class MessageCodec {
 
         BinaryBuffer encodedView = encoder.newView();
         int offset = encodedView.startOffset;
-        int typeLength = typeCodec.getEncodedLength(type);
+        int typeLength = typeCodec.getRequiredEncodingLength(type);
         offset -= typeLength;
         typeCodec.encode(offset, type);
-        int length = encodedView.length + typeLength + 1;
-        int lengthLength = lengthCodec.getEncodedLength(length);
-        if(lengthLength > 1) {
-            length += lengthLength - 1;
-            lengthLength = lengthCodec.getEncodedLength(length);
-        }
+        int length = encodedView.length + typeLength;
+        int lengthLength = lengthCodec.getRequiredEncodingLength(length);
         offset -= lengthLength;
         lengthCodec.encode(offset, length);
         return buffer.newView(offset, encodedView.endOffset);
@@ -83,11 +79,9 @@ public class MessageCodec {
         LittleEndianCodec endianCodec = new LittleEndianCodec(buffer);
         final IntegerCodec lengthCodec = new IntegerCodec.OneThree(endianCodec);
         final IntegerCodec typeCodec = new IntegerCodec.OneTwo(endianCodec);
-        int offset = buffer.startOffset;
-        int length = lengthCodec.decode(offset);
-        offset += lengthCodec.getEncodedLength(length);
+        int offset = buffer.startOffset + lengthCodec.getEncodedLength(buffer.startOffset);
         int type = typeCodec.decode(offset);
-        offset += typeCodec.getEncodedLength(type);
+        offset += typeCodec.getRequiredEncodingLength(type);
         Specification specification = typeToSpec.get(type);
         Parameters parameters = new Parameters(specification);
         BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(parameters::add);

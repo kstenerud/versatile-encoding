@@ -77,6 +77,9 @@ public class Specification implements Iterable<Specification.ParameterSpecificat
         private Type(@Nonnull String name) {
             super(name);
         }
+        // TODO: More granular types for what the msg receiver is expecting to use.
+        // TODO: How does this affect free-form maps & lists & ANY?
+        // TODO: int8, int16, int32, int64, float32, float64, date, others as-is
         public static final Type BOOLEAN = new Type("boolean");
         public static final Type INTEGER = new Type("integer");
         public static final Type FLOAT = new Type("float");

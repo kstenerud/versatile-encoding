@@ -37,11 +37,11 @@ public class IntegerCodecTest {
     @Test
     public void testOneTwoEncodedLength() {
         LittleEndianCodec endianCodec = new LittleEndianCodec(new BinaryBuffer(10));
-        assertEquals(1, new IntegerCodec.OneTwo(endianCodec).getEncodedLength(0));
-        assertEquals(1, new IntegerCodec.OneTwo(endianCodec).getEncodedLength(1));
-        assertEquals(1, new IntegerCodec.OneTwo(endianCodec).getEncodedLength(127));
-        assertEquals(2, new IntegerCodec.OneTwo(endianCodec).getEncodedLength(128));
-        assertEquals(2, new IntegerCodec.OneTwo(endianCodec).getEncodedLength(0x7fff));
+        assertEquals(1, new IntegerCodec.OneTwo(endianCodec).getRequiredEncodingLength(0));
+        assertEquals(1, new IntegerCodec.OneTwo(endianCodec).getRequiredEncodingLength(1));
+        assertEquals(1, new IntegerCodec.OneTwo(endianCodec).getRequiredEncodingLength(127));
+        assertEquals(2, new IntegerCodec.OneTwo(endianCodec).getRequiredEncodingLength(128));
+        assertEquals(2, new IntegerCodec.OneTwo(endianCodec).getRequiredEncodingLength(0x7fff));
     }
 
     @Test
@@ -60,11 +60,11 @@ public class IntegerCodecTest {
     @Test
     public void testOneThreeEncodedLength() {
         LittleEndianCodec endianCodec = new LittleEndianCodec(new BinaryBuffer(10));
-        assertEquals(1, new IntegerCodec.OneThree(endianCodec).getEncodedLength(0));
-        assertEquals(1, new IntegerCodec.OneThree(endianCodec).getEncodedLength(1));
-        assertEquals(1, new IntegerCodec.OneThree(endianCodec).getEncodedLength(127));
-        assertEquals(3, new IntegerCodec.OneThree(endianCodec).getEncodedLength(128));
-        assertEquals(3, new IntegerCodec.OneThree(endianCodec).getEncodedLength(0x7fffff));
+        assertEquals(1, new IntegerCodec.OneThree(endianCodec).getRequiredEncodingLength(0));
+        assertEquals(1, new IntegerCodec.OneThree(endianCodec).getRequiredEncodingLength(1));
+        assertEquals(1, new IntegerCodec.OneThree(endianCodec).getRequiredEncodingLength(127));
+        assertEquals(3, new IntegerCodec.OneThree(endianCodec).getRequiredEncodingLength(128));
+        assertEquals(3, new IntegerCodec.OneThree(endianCodec).getRequiredEncodingLength(0x7fffff));
     }
 
     private void assertEncodeFails2(int value) {

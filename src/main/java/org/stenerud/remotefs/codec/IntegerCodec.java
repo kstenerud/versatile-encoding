@@ -5,7 +5,11 @@ import javax.annotation.Nonnull;
 public interface IntegerCodec {
     public int getMaxValue();
 
-    public int getEncodedLength(int value);
+    public int getRequiredEncodingLength(int value);
+
+    public int getRequiredAdditionalBytesCount(int firstByte);
+
+    public int getEncodedLength(int offset);
 
     public int getMaxEncodedLength();
 
@@ -34,13 +38,23 @@ public interface IntegerCodec {
         }
 
         @Override
-        public int getEncodedLength(int value) {
+        public int getRequiredEncodingLength(int value) {
             return (value<<1) > 0xff ? 2 : 1;
         }
 
         @Override
+        public int getRequiredAdditionalBytesCount(int firstByte) {
+            return (firstByte & 1) == 1 ? 1 : 0;
+        }
+
+        @Override
+        public int getEncodedLength(int offset) {
+            return (endianCodec.decodeInt8(offset) & 1) == 1 ? 3 : 1;
+        }
+
+        @Override
         public int getMaxEncodedLength() {
-            return getEncodedLength(getMaxValue());
+            return getRequiredEncodingLength(getMaxValue());
         }
 
         @Override
@@ -85,13 +99,23 @@ public interface IntegerCodec {
         }
 
         @Override
-        public int getEncodedLength(int value) {
+        public int getRequiredEncodingLength(int value) {
             return (value<<1) > 0xff ? 3 : 1;
         }
 
         @Override
+        public int getRequiredAdditionalBytesCount(int firstByte) {
+            return (firstByte & 1) == 1 ? 2 : 0;
+        }
+
+        @Override
+        public int getEncodedLength(int offset) {
+            return (endianCodec.decodeInt8(offset) & 1) == 1 ? 3 : 1;
+        }
+
+        @Override
         public int getMaxEncodedLength() {
-            return getEncodedLength(getMaxValue());
+            return getRequiredEncodingLength(getMaxValue());
         }
 
         @Override
@@ -108,9 +132,12 @@ public interface IntegerCodec {
 
         @Override
         public int decode(int offset) {
-            int value = endianCodec.decodeInt32(offset);
+            int value = endianCodec.decodeInt8(offset);
             int sizeFlag = value & 1;
-            value >>= 1;
+            if(sizeFlag != 0) {
+                value = (value & 0xff) | endianCodec.decodeInt16(offset+1);
+            }
+            value >>>= 1;
             return value & MASKS[sizeFlag];
         }
     }

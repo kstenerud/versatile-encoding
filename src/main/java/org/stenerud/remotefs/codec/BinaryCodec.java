@@ -48,7 +48,7 @@ public class BinaryCodec {
         byte EMPTY         = (byte)0x8a;
     }
 
-    static class EndOfDataException extends IOException {
+    public static class EndOfDataException extends IOException {
     }
 
     static class NoRoomException extends IOException {
@@ -550,7 +550,7 @@ public class BinaryCodec {
 
         private final Visitor visitor;
 
-        Decoder(@Nonnull Visitor visitor) {
+        public Decoder(@Nonnull Visitor visitor) {
             this.visitor = visitor;
         }
 

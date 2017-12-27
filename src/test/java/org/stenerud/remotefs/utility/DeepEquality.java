@@ -1,6 +1,7 @@
 package org.stenerud.remotefs.utility;
 
 import junit.framework.AssertionFailedError;
+import org.stenerud.remotefs.message.Parameters;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -83,9 +84,27 @@ public class DeepEquality {
             actual = Instant.ofEpochMilli(((Date) actual).getTime());
         }
 
+        if(expected instanceof Parameters && actual instanceof Parameters) {
+            assertParametersEquality((Parameters)expected, (Parameters)actual);
+            return;
+        }
+
         // Everything else
         if(!expected.equals(actual)) {
             failEqualityAssertion(expected, actual);
+        }
+    }
+
+    private static void assertParametersEquality(Parameters expected, Parameters actual) {
+        Iterator<Object> expectedIterator = expected.iterator();
+        Iterator<Object> actualIterator = actual.iterator();
+        while(expectedIterator.hasNext()) {
+            Object expectedObject = expectedIterator.next();
+            Object actualObject = actualIterator.next();
+            assertEquals(expectedObject, actualObject);
+        }
+        if(actualIterator.hasNext()) {
+            throw new AssertionFailedError("actual iterator has more entries");
         }
     }
 

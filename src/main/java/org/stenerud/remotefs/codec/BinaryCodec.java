@@ -2,6 +2,7 @@ package org.stenerud.remotefs.codec;
 
 import org.stenerud.remotefs.utility.BinaryBuffer;
 import org.stenerud.remotefs.utility.Decimal128Holder;
+import org.stenerud.remotefs.utility.Int128Holder;
 import org.stenerud.remotefs.utility.Utf8Tool;
 
 import javax.annotation.CheckForNull;
@@ -73,6 +74,44 @@ public class BinaryCodec {
 
         public @Nonnull BinaryBuffer newView() {
             return buffer.newView(buffer.startOffset, currentOffset);
+        }
+
+        public int writeObject(@CheckForNull Object value) throws NoRoomException {
+            if(value == null) {
+                return writeEmpty();
+            } else if(value instanceof Long) {
+                return writeInteger((long)value);
+            } else if(value instanceof Double) {
+                return writeFloat((double)value);
+            } else if(value instanceof String) {
+                return writeString((String)value);
+            } else if(value instanceof BinaryBuffer) {
+                return writeBytes((BinaryBuffer) value);
+            } else if(value instanceof List) {
+                return writeList((List)value);
+            } else if(value instanceof Map) {
+                return writeMap((Map<Object, Object>)value);
+            } else if(value instanceof byte[]) {
+                return writeBytes((byte[])value);
+            } else if(value instanceof Byte) {
+                return writeInteger((long)(byte)value);
+            } else if(value instanceof Short) {
+                return writeInteger((long)(short)value);
+            } else if(value instanceof Integer) {
+                return writeInteger((long)(int)value);
+            } else if(value instanceof Float) {
+                return writeFloat32((float)value);
+            } else if(value instanceof Boolean) {
+                return writeBoolean((boolean)value);
+            } else if(value instanceof Int128Holder) {
+                return writeDecimal128((Int128Holder)value);
+            } else if(value instanceof Date) {
+                return writeDate((Date)value);
+            } else if(value instanceof Instant) {
+                return writeDate((Instant) value);
+            } else {
+                throw new IllegalArgumentException("Don't know how to encode type " + value.getClass());
+            }
         }
 
         private int write8(byte value) throws NoRoomException {
@@ -155,7 +194,7 @@ public class BinaryCodec {
             }
         }
 
-        private int write128(@Nonnull Decimal128Holder value) throws NoRoomException {
+        private int write128(@Nonnull Int128Holder value) throws NoRoomException {
             try {
                 int length = endianCodec.encodeInt128(currentOffset, value);
                 currentOffset += length;
@@ -163,14 +202,6 @@ public class BinaryCodec {
             } catch(IndexOutOfBoundsException e) {
                 throw new NoRoomException();
             }
-        }
-
-        private int writeType(byte type) throws NoRoomException {
-            return write8(type);
-        }
-
-        private int writeLength(int length) throws NoRoomException {
-            return writeInteger(length);
         }
 
         private int writeData(@Nonnull byte[] value, int startOffset, int endOffset) throws NoRoomException {
@@ -194,42 +225,12 @@ public class BinaryCodec {
             return writeData(value.data, value.startOffset, value.endOffset);
         }
 
-        public int writeObject(@CheckForNull Object value) throws NoRoomException {
-            if(value == null) {
-                return writeEmpty();
-            } else if(value instanceof Long) {
-                return writeInteger((long)value);
-            } else if(value instanceof Double) {
-                return writeFloat((double)value);
-            } else if(value instanceof String) {
-                return writeString((String)value);
-            } else if(value instanceof BinaryBuffer) {
-                return writeBytes((BinaryBuffer) value);
-            } else if(value instanceof List) {
-                return writeList((List)value);
-            } else if(value instanceof Map) {
-                return writeMap((Map<Object, Object>)value);
-            } else if(value instanceof byte[]) {
-                return writeBytes((byte[])value);
-            } else if(value instanceof Byte) {
-                return writeInteger((long)(byte)value);
-            } else if(value instanceof Short) {
-                return writeInteger((long)(short)value);
-            } else if(value instanceof Integer) {
-                return writeInteger((long)(int)value);
-            } else if(value instanceof Float) {
-                return writeFloat32((float)value);
-            } else if(value instanceof Boolean) {
-                return writeBoolean((boolean)value);
-            } else if(value instanceof Decimal128Holder) {
-                return writeDecimal128((Decimal128Holder)value);
-            } else if(value instanceof Date) {
-                return writeDate((Date)value);
-            } else if(value instanceof Instant) {
-                return writeDate((Instant) value);
-            } else {
-                throw new IllegalArgumentException("Don't know how to encode type " + value.getClass());
-            }
+        private int writeType(byte type) throws NoRoomException {
+            return write8(type);
+        }
+
+        private int writeLength(int length) throws NoRoomException {
+            return writeInteger(length);
         }
 
         private int writeBoolean(boolean value) throws NoRoomException {
@@ -268,7 +269,7 @@ public class BinaryCodec {
             return writeType(EncodedType.INT64) + write64(value);
         }
 
-        private int writeDecimal128(Decimal128Holder value) throws NoRoomException {
+        private int writeDecimal128(Int128Holder value) throws NoRoomException {
             return writeType(EncodedType.DECIMAL128) + write128(value);
         }
 
@@ -651,12 +652,17 @@ public class BinaryCodec {
             }
 
             private @Nonnull
-            Decimal128Holder readDecimal128() throws EndOfDataException {
+            Int128Holder readInt128() throws EndOfDataException {
                 int bytesToRead = 16;
                 checkCanReadBytes(bytesToRead);
-                Decimal128Holder result = endianCodec.decodeInt128(currentOffset);
+                Int128Holder result = endianCodec.decodeInt128(currentOffset);
                 currentOffset += bytesToRead;
                 return result;
+            }
+
+            private @Nonnull
+            Decimal128Holder readDecimal128() throws EndOfDataException {
+                return new Decimal128Holder(readInt128());
             }
 
             private long readInteger() throws EndOfDataException {

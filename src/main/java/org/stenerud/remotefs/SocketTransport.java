@@ -97,7 +97,6 @@ public class SocketTransport implements AutoCloseable {
 
     private void writeBuffer(BinaryBuffer buffer) throws IOException {
         try {
-            System.out.println("" + this + ": write " + buffer.length);
             outStream.write(buffer.data, buffer.startOffset, buffer.length);
         } catch(SocketException e) {
             throw new DisconnectedException(e);

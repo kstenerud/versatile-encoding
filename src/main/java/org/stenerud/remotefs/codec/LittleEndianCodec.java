@@ -1,7 +1,7 @@
 package org.stenerud.remotefs.codec;
 
 import org.stenerud.remotefs.utility.BinaryBuffer;
-import org.stenerud.remotefs.utility.Decimal128Holder;
+import org.stenerud.remotefs.utility.Int128Holder;
 
 import javax.annotation.Nonnull;
 import java.nio.ByteBuffer;
@@ -62,7 +62,7 @@ public class LittleEndianCodec {
         return 8;
     }
 
-    public int encodeInt128(int offset, @Nonnull Decimal128Holder value) {
+    public int encodeInt128(int offset, @Nonnull Int128Holder value) {
         byteBuffer.putLong(offset, value.lowWord);
         byteBuffer.putLong(offset+8, value.highWord);
         return 16;
@@ -121,8 +121,8 @@ public class LittleEndianCodec {
     }
 
     public @Nonnull
-    Decimal128Holder decodeInt128(int offset) {
-        return new Decimal128Holder(byteBuffer.getLong(offset+8), byteBuffer.getLong(offset));
+    Int128Holder decodeInt128(int offset) {
+        return new Int128Holder(byteBuffer.getLong(offset+8), byteBuffer.getLong(offset));
     }
 
     public float decodeFloat32(int offset) {

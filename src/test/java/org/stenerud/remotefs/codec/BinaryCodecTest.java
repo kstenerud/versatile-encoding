@@ -4,7 +4,7 @@ import junit.framework.AssertionFailedError;
 import org.junit.Test;
 import org.stenerud.remotefs.utility.BinaryBuffer;
 import org.stenerud.remotefs.utility.DeepEquality;
-import org.stenerud.remotefs.utility.Decimal128Holder;
+import org.stenerud.remotefs.utility.Int128Holder;
 import org.stenerud.remotefs.utility.ObjectHolder;
 
 import java.text.ParseException;
@@ -271,7 +271,7 @@ public class BinaryCodecTest {
         assertWriteTooMany(null);
         assertWriteTooMany(false);
         assertWriteTooMany(true);
-        assertWriteTooMany(new Decimal128Holder(4358387134555l, 6738465837465861574l));
+        assertWriteTooMany(new Int128Holder(4358387134555l, 6738465837465861574l));
         assertWriteTooMany(1.0f);
         assertWriteTooMany(1.010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001);
         assertWriteTooMany(new LinkedList<>());
@@ -342,7 +342,7 @@ public class BinaryCodecTest {
         assertEncodeDecode(null);
         assertEncodeDecode(true);
         assertEncodeDecode(false);
-        assertEncodeDecode(new Decimal128Holder(100, 10000000000000L));
+        assertEncodeDecode(new Int128Holder(100, 10000000000000L));
         assertEncodeDecode(Instant.parse("2017-12-03T10:15:30.01Z"));
         assertEncodeDecode(Instant.parse("2017-12-03T10:15:30.00Z"));
         assertEncodeDecode(Instant.parse("2017-12-03T00:00:00.00Z"));

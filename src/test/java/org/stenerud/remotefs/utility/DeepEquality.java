@@ -269,8 +269,8 @@ public class DeepEquality {
         }
 
         // One should at least be a subclass of the other.
-        if(!(expectedClass.isInstance(actualClass) ||
-                actualClass.isInstance(expectedClass))) {
+        if(!(expectedClass.isAssignableFrom(actualClass) ||
+                actualClass.isAssignableFrom(expectedClass))) {
             throw new AssertionFailedError("Expected class " + expectedClass + " but got " + actualClass);
         }
     }

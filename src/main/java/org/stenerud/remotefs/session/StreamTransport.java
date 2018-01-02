@@ -1,5 +1,6 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.session;
 
+import org.stenerud.remotefs.DisconnectedException;
 import org.stenerud.remotefs.codec.BinaryCodec;
 import org.stenerud.remotefs.codec.IntegerCodec;
 import org.stenerud.remotefs.codec.LittleEndianCodec;
@@ -11,23 +12,21 @@ import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.Socket;
 import java.net.SocketException;
 import java.nio.channels.ClosedChannelException;
 import java.util.logging.Logger;
 
-public class SocketTransport implements AutoCloseable {
-    private static final Logger LOG = Logger.getLogger(SocketTransport.class.getName());
+public class StreamTransport implements AutoCloseable {
+    private static final Logger LOG = Logger.getLogger(StreamTransport.class.getName());
 
-    private final Socket socket;
     private final InputStream inStream;
+
     private final OutputStream outStream;
     private final MessageCodec messageCodec;
 
-    public SocketTransport(Socket socket, MessageCodec messageCodec) throws IOException {
-        this.socket = socket;
-        this.inStream = socket.getInputStream();
-        this.outStream = socket.getOutputStream();
+    public StreamTransport(InputStream inStream, OutputStream outStream, MessageCodec messageCodec) throws IOException {
+        this.inStream = inStream;
+        this.outStream = outStream;
         this.messageCodec = messageCodec;
     }
 
@@ -67,9 +66,14 @@ public class SocketTransport implements AutoCloseable {
         }
     }
 
+    public void flush() throws IOException {
+        outStream.flush();
+    }
+
     @Override
     public void close() throws Exception {
-        socket.close();
+        inStream.close();
+        outStream.close();
     }
 
     private int readBytes(BinaryBuffer buffer, int startOffset, int length) throws IOException {

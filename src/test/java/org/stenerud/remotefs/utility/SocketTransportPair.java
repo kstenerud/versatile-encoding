@@ -1,6 +1,6 @@
 package org.stenerud.remotefs.utility;
 
-import org.stenerud.remotefs.SocketTransport;
+import org.stenerud.remotefs.session.SocketTransport;
 import org.stenerud.remotefs.codec.MessageCodec;
 
 import java.io.IOException;
@@ -8,31 +8,20 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class SocketTransportPair implements AutoCloseable {
+    public final ThreadedStreamTransportWrapper clientTransport;
+    public final ThreadedStreamTransportWrapper serverTransport;
 
-    public SocketTransport getClientTransport() {
-        return clientTransport;
+    public SocketTransportPair(MessageCodec messageCodec) throws IOException {
+        this(messageCodec, PortCounter.next());
     }
-
-    public SocketTransport getServerTransport() {
-        return serverTransport;
-    }
-
-    public static class Builder {
-        public static SocketTransportPair build(MessageCodec messageCodec) throws IOException {
-            return new SocketTransportPair(messageCodec, PortCounter.next());
-        }
-    }
-
-    private final SocketTransport clientTransport;
-    private final SocketTransport serverTransport;
 
     private SocketTransportPair(MessageCodec messageCodec, int port) throws IOException {
         ServerSocket serverSocket = new ServerSocket(port);
         Socket client = new Socket("127.0.0.1", port);
         Socket server = serverSocket.accept();
 
-        clientTransport = new SocketTransport(client, messageCodec);
-        serverTransport = new SocketTransport(server, messageCodec);
+        clientTransport = new ThreadedStreamTransportWrapper(new SocketTransport(client, messageCodec));
+        serverTransport = new ThreadedStreamTransportWrapper(new SocketTransport(server, messageCodec));
     }
 
     @Override

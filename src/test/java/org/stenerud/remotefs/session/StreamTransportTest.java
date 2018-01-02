@@ -1,16 +1,13 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.session;
 
-import org.junit.Assert;
 import org.junit.Test;
 import org.stenerud.remotefs.codec.MessageCodec;
 import org.stenerud.remotefs.message.Parameters;
 import org.stenerud.remotefs.message.Specification;
 import org.stenerud.remotefs.utility.DeepEquality;
-import org.stenerud.remotefs.utility.SocketTransportPair;
+import org.stenerud.remotefs.utility.StreamTransportPair;
 
-import java.io.IOException;
-
-public class SocketTransportTest {
+public class StreamTransportTest {
     @Test
     public void testX() throws Exception {
         MessageCodec messageCodec = new MessageCodec();
@@ -19,20 +16,10 @@ public class SocketTransportTest {
         messageCodec.registerSpecification(specification,1);
         Parameters message = new Parameters(specification).add(1);
         Parameters actual;
-        try(SocketTransportPair transports = SocketTransportPair.Builder.build(messageCodec)) {
-            sendMessage(message, transports.getClientTransport());
-            actual = transports.getServerTransport().getNextMessage();
+        try(StreamTransportPair transports = new StreamTransportPair(messageCodec)) {
+            transports.clientTransport.sendMessage(message);
+            actual = transports.serverTransport.getNextMessage();
         }
         DeepEquality.assertEquals(message, actual);
-    }
-
-    private void sendMessage(Parameters message, SocketTransport transport) {
-        new Thread(() -> {
-            try {
-                transport.sendMessage(message);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }).start();
     }
 }

@@ -8,4 +8,8 @@ public class DisconnectedException extends IOException {
     public DisconnectedException(@Nonnull Throwable throwable) {
         super(throwable);
     }
+
+    public DisconnectedException(String s) {
+        super(s);
+    }
 }

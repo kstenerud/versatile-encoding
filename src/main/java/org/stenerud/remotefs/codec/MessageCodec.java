@@ -1,7 +1,7 @@
 package org.stenerud.remotefs.codec;
 
+import org.stenerud.remotefs.message.Message;
 import org.stenerud.remotefs.utility.BinaryBuffer;
-import org.stenerud.remotefs.message.Parameters;
 import org.stenerud.remotefs.message.Specification;
 import org.stenerud.remotefs.utility.StrictMap;
 
@@ -32,12 +32,12 @@ public class MessageCodec {
         // Functions:
         // get session id (void)
         // reconnect session id (id)
-        // close session id (id)
+        // closeAll session id (id)
         // abort function call (id)
         // get schema (search params, as summary?)
     }
-    private final Map<Specification, Integer> specToType = new StrictMap<>(HashMap::new);
-    private final Map<Integer, Specification> typeToSpec = new StrictMap<>(HashMap::new);
+    private final Map<Specification, Integer> specToType = StrictMap.with(HashMap::new).withErrorFormat("No message type registered for specification %s");
+    private final Map<Integer, Specification> typeToSpec = StrictMap.with(HashMap::new).withErrorFormat("No specification registered for message type %s");
 
     public static final int MAX_MESSAGE_TYPE = IntegerCodec.OneTwo.MAX_VALUE;
 
@@ -49,9 +49,9 @@ public class MessageCodec {
         typeToSpec.put(type, spec);
     }
 
-    public BinaryBuffer encode(@Nonnull Parameters parameters, @Nonnull BinaryBuffer buffer) throws BinaryCodec.NoRoomException {
-        parameters.verifyCompleteness();
-        int type = specToType.get(parameters.getSpecification());
+    public BinaryBuffer encode(@Nonnull Message message, @Nonnull BinaryBuffer buffer) throws BinaryCodec.NoRoomException {
+        message.verifyCompleteness();
+        int type = specToType.get(message.getSpecification());
         final int maxContentsOffset = IntegerCodec.OneTwo.MAX_LENGTH + IntegerCodec.OneThree.MAX_LENGTH;
         BinaryBuffer offsetView = buffer.newView(buffer.startOffset + maxContentsOffset);
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(offsetView);
@@ -59,7 +59,7 @@ public class MessageCodec {
         final IntegerCodec lengthCodec = new IntegerCodec.OneThree(endianCodec);
         final IntegerCodec typeCodec = new IntegerCodec.OneTwo(endianCodec);
 
-        for(Object value: parameters) {
+        for(Object value: message) {
             encoder.writeObject(value);
         }
 
@@ -75,7 +75,8 @@ public class MessageCodec {
         return buffer.newView(offset, encodedView.endOffset);
     }
 
-    public @Nonnull Parameters decode(@Nonnull BinaryBuffer buffer) throws BinaryCodec.EndOfDataException {
+    public @Nonnull
+    Message decode(@Nonnull BinaryBuffer buffer) throws BinaryCodec.EndOfDataException {
         LittleEndianCodec endianCodec = new LittleEndianCodec(buffer);
         final IntegerCodec lengthCodec = new IntegerCodec.OneThree(endianCodec);
         final IntegerCodec typeCodec = new IntegerCodec.OneTwo(endianCodec);
@@ -83,11 +84,11 @@ public class MessageCodec {
         int type = typeCodec.decode(offset);
         offset += typeCodec.getRequiredEncodingLength(type);
         Specification specification = typeToSpec.get(type);
-        Parameters parameters = new Parameters(specification);
-        BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(parameters::add);
+        Message message = new Message(specification);
+        BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(message::add);
         decoder.feed(buffer.newView(offset));
 
-        parameters.verifyCompleteness();
-        return parameters;
+        message.verifyCompleteness();
+        return message;
     }
 }

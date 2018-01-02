@@ -14,11 +14,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Message and function parameters.
+ * Message.
  */
-public class Parameters implements Iterable<Object> {
+public class Message implements Iterable<Object> {
     private static final Map<Specification.Type, Class> TYPE_TO_CLASS = new HashMap<>();
-    private static final Map<Class<?>, Specification.Type> CLASS_TO_TYPE = new StrictMap<>(ConcurrentHashMap::new);
+    private static final Map<Class<?>, Specification.Type> CLASS_TO_TYPE = StrictMap.with(ConcurrentHashMap::new).withErrorFormat("%s is not an allowed parameter type");
     static {
         TYPE_TO_CLASS.put(Specification.Type.INTEGER, Long.class);
         TYPE_TO_CLASS.put(Specification.Type.FLOAT, Double.class);
@@ -35,7 +35,7 @@ public class Parameters implements Iterable<Object> {
 
     private final Specification specification;
     private final TypeConverter typeConverter = new TypeConverter();
-    private final StrictMap<String, Parameter> parameters = new StrictMap<>(HashMap::new);
+    private final StrictMap<String, Parameter> parameters = StrictMap.with(HashMap::new).withErrorFormat("%s: No such parameter");
     private int specIndex = 0;
 
     @Override
@@ -83,7 +83,7 @@ public class Parameters implements Iterable<Object> {
         }
     }
 
-    public Parameters(@Nonnull Specification specification) {
+    public Message(@Nonnull Specification specification) {
         this.specification = specification;
         for(Specification.ParameterSpecification paramSpec: specification) {
             if(paramSpec.isOptional()) {
@@ -92,13 +92,17 @@ public class Parameters implements Iterable<Object> {
         }
     }
 
-    public @Nonnull Parameters add(@Nullable Object value) {
+    private String getNextSpecificationName() {
+        return specification.getByIndex(specIndex++).name;
+    }
+
+    public @Nonnull
+    Message add(@Nullable Object value) {
         // TODO: What to do when the client adds too many parameters?
         // Throw an exception?
         // Silently ignore?
         // Which is better for forward compatibility?
-        String name = specification.getByIndex(specIndex++).name;
-        return set(name, value);
+        return set(getNextSpecificationName(), value);
     }
 
     private Object convert(@Nullable Object value, @Nonnull Specification.Type type) {
@@ -109,13 +113,25 @@ public class Parameters implements Iterable<Object> {
         return value;
     }
 
-    public @Nonnull Parameters set(@Nonnull String name, @Nullable Object value) {
+    public @Nonnull
+    Message set(@Nonnull String name, @Nullable Object value) {
         Specification.ParameterSpecification paramSpec = specification.getByName(name);
         value = typeConverter.promote(value);
         value = convert(value, paramSpec.type);
         Specification.Type type = getEffectiveType(paramSpec, value);
+        return setUnchecked(name, type, value);
+    }
+
+    public @Nonnull
+    Message addUnchecked(@Nonnull Specification.Type type, @Nullable Object value) {
+        return setUnchecked(getNextSpecificationName(), type, value);
+    }
+
+    public @Nonnull
+    Message setUnchecked(@Nonnull String name, Specification.Type type, @Nullable Object value) {
         parameters.put(name, new Parameter(type, value));
         return this;
+
     }
 
     public boolean isPresent(@Nonnull String parameterName) {

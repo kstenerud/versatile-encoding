@@ -1,6 +1,7 @@
 package org.stenerud.remotefs.session;
 
 import org.stenerud.remotefs.codec.MessageCodec;
+import org.stenerud.remotefs.utility.Closer;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -12,9 +13,12 @@ public class SocketTransport extends StreamTransport {
         super(socket.getInputStream(), socket.getOutputStream(), messageCodec);
         this.socket = socket;
     }
+
     @Override
     public void close() throws Exception {
-        super.close();
-        socket.close();
+        Closer.closeAll(
+                (AutoCloseable) () -> SocketTransport.super.close(),
+                socket
+        );
     }
 }

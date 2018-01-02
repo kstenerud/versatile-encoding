@@ -3,7 +3,7 @@ package org.stenerud.remotefs.utility;
 /**
  * Thread adapter that repeatedly calls the performLoop() method until shut down.
  */
-public abstract class LoopingThread extends Thread {
+public abstract class LoopingThread extends Thread implements AutoCloseable {
     private boolean isRunning = true;
 
     @Override
@@ -23,5 +23,10 @@ public abstract class LoopingThread extends Thread {
 
     public void shutdown() {
         isRunning = false;
+    }
+
+    @Override
+    public void close() throws Exception {
+        shutdown();
     }
 }

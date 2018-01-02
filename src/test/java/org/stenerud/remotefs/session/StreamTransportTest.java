@@ -2,24 +2,26 @@ package org.stenerud.remotefs.session;
 
 import org.junit.Test;
 import org.stenerud.remotefs.codec.MessageCodec;
-import org.stenerud.remotefs.message.Parameters;
+import org.stenerud.remotefs.message.Message;
 import org.stenerud.remotefs.message.Specification;
 import org.stenerud.remotefs.utility.DeepEquality;
+import org.stenerud.remotefs.utility.ObjectHolder;
 import org.stenerud.remotefs.utility.StreamTransportPair;
 
 public class StreamTransportTest {
     @Test
-    public void testX() throws Exception {
+    public void testTransport() throws Exception {
         MessageCodec messageCodec = new MessageCodec();
         Specification specification = new Specification("test", "desc",
                 new Specification.ParameterSpecification("one", Specification.Type.INTEGER, "first value"));
         messageCodec.registerSpecification(specification,1);
-        Parameters message = new Parameters(specification).add(1);
-        Parameters actual;
+        Message message = new Message(specification).add(1);
+        ObjectHolder holder = new ObjectHolder();
         try(StreamTransportPair transports = new StreamTransportPair(messageCodec)) {
-            transports.clientTransport.sendMessage(message);
-            actual = transports.serverTransport.getNextMessage();
+            transports.serverSideTransport.setListener(message1 -> holder.set(message1));
+            transports.clientSideTransport.sendMessage(message);
+            DeepEquality.assertEquals(message, holder.get());
         }
-        DeepEquality.assertEquals(message, actual);
+        Thread.sleep(100);
     }
 }

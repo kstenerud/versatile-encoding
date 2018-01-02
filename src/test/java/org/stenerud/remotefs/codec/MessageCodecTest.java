@@ -1,14 +1,10 @@
 package org.stenerud.remotefs.codec;
 
 import org.junit.Test;
-import org.stenerud.remotefs.codec.MessageCodec;
-import org.stenerud.remotefs.message.ExceptionMessageSpecification;
-import org.stenerud.remotefs.message.ResourceMessageSpecification;
-import org.stenerud.remotefs.message.StatusMessageSpecification;
+import org.stenerud.remotefs.message.*;
 import org.stenerud.remotefs.utility.BinaryBuffer;
 import org.stenerud.remotefs.utility.DeepEquality;
-import org.stenerud.remotefs.message.Parameters;
-import org.stenerud.remotefs.message.Specification;
+import org.stenerud.remotefs.message.Message;
 
 import static org.junit.Assert.assertTrue;
 
@@ -16,7 +12,7 @@ public class MessageCodecTest {
 
     @Test
     public void testException() throws Exception {
-        assertEncodeDecode(new Parameters(new ExceptionMessageSpecification())
+        assertEncodeDecode(new Message(new ExceptionMessageSpecification())
                 .set(ExceptionMessageSpecification.CONTEXT_ID, 1)
                 .set(ExceptionMessageSpecification.TYPE, 10)
                 .set(ExceptionMessageSpecification.MESSAGE, "It's broken!"), 100);
@@ -24,14 +20,14 @@ public class MessageCodecTest {
 
     @Test
     public void testException2() throws Exception {
-        assertEncodeDecode(new Parameters(new ExceptionMessageSpecification())
+        assertEncodeDecode(new Message(new ExceptionMessageSpecification())
                 .set(ExceptionMessageSpecification.CONTEXT_ID, 1)
                 .set(ExceptionMessageSpecification.TYPE, 10), 100);
     }
 
     @Test
     public void testStatus() throws Exception {
-        assertEncodeDecode(new Parameters(new StatusMessageSpecification())
+        assertEncodeDecode(new Message(new StatusMessageSpecification())
                 .set(StatusMessageSpecification.JOB_ID, 1)
                 .set(StatusMessageSpecification.COMPLETION, 50), 100);
     }
@@ -83,7 +79,7 @@ public class MessageCodecTest {
     }
 
     private void assertResourceMessage(int chunkSize) throws Exception {
-        assertEncodeDecode(new Parameters(new ResourceMessageSpecification())
+        assertEncodeDecode(new Message(new ResourceMessageSpecification())
                 .set(ResourceMessageSpecification.STREAM_ID, 1)
                 .set(ResourceMessageSpecification.CHUNK_COUNT, 1)
                 .set(ResourceMessageSpecification.CHUNK_INDEX, 0)
@@ -122,11 +118,11 @@ public class MessageCodecTest {
                 new Specification.ParameterSpecification("chunk", Specification.Type.ANY, "The chunk data")
                 );
         codec.registerSpecification(specification, type);
-        Parameters parameters = new Parameters(specification).add(new byte[size]);
+        Message message = new Message(specification).add(new byte[size]);
         BinaryBuffer buffer = new BinaryBuffer(size + 11);
-        BinaryBuffer encodedView = codec.encode(parameters, buffer);
-        Parameters result = codec.decode(encodedView);
-        for(Specification.ParameterSpecification paramSpec: parameters.getSpecification()) {
+        BinaryBuffer encodedView = codec.encode(message, buffer);
+        Message result = codec.decode(encodedView);
+        for(Specification.ParameterSpecification paramSpec: message.getSpecification()) {
             if(result.isPresent(paramSpec.name)) {
                 Object expected = result.getObject(paramSpec.name);
                 Object actual = result.getObject(paramSpec.name);
@@ -135,12 +131,12 @@ public class MessageCodecTest {
         }
     }
 
-    private void assertEncodeDecode(Parameters parameters, int bufferSize) throws Exception {
+    private void assertEncodeDecode(Message message, int bufferSize) throws Exception {
         MessageCodec messageCodec = getStandardMessageCodec();
         BinaryBuffer buffer = new BinaryBuffer(bufferSize);
-        BinaryBuffer encodedView = messageCodec.encode(parameters, buffer);
-        Parameters result = messageCodec.decode(encodedView);
-        for(Specification.ParameterSpecification paramSpec: parameters.getSpecification()) {
+        BinaryBuffer encodedView = messageCodec.encode(message, buffer);
+        Message result = messageCodec.decode(encodedView);
+        for(Specification.ParameterSpecification paramSpec: message.getSpecification()) {
             if(result.isPresent(paramSpec.name)) {
                 Object expected = result.getObject(paramSpec.name);
                 Object actual = result.getObject(paramSpec.name);

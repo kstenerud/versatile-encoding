@@ -4,6 +4,8 @@ import org.stenerud.remotefs.NotFoundException;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -18,21 +20,41 @@ import java.util.function.Supplier;
  * @param <V> Value type
  */
 public class StrictMap<K, V> implements Map<K, V> {
-    private Map<K, V> map;
+    private final Map<K, V> map;
+    private final String errorMessageFormat;
 
-    public StrictMap(@Nonnull Supplier<? extends Map<K, V>> supplier) {
-        map = supplier.get();
+    public static @Nonnull <K, V> StrictMap<K, V> with(@Nonnull Supplier<? extends Map<K, V>> supplier) {
+        return new StrictMap<K, V>(supplier.get(), "Key [%s] not found");
+    }
+
+    public static @Nonnull <K, V> StrictMap<K, V> cloning(@Nonnull Map<K, V> map) {
+        return with((Supplier<Map<K, V>>) () -> {
+            try {
+                return map.getClass().getConstructor(Map.class).newInstance(map);
+            } catch (Exception e) {
+                throw new IllegalArgumentException(e);
+            }
+        });
+    }
+
+    private StrictMap(@Nonnull Map<K, V> map, @Nonnull String errorMessageFormat) {
+        this.map = map;
+        this.errorMessageFormat = errorMessageFormat;
+    }
+
+    public @Nonnull StrictMap withErrorFormat(String errorMessageFormat) {
+        return new StrictMap(this.map, errorMessageFormat);
     }
 
     @Override
     public @Nonnull
     V get(@CheckForNull Object key) {
         if(key == null) {
-            throw new NotFoundException("Key is null");
+            throw new NotFoundException(String.format(errorMessageFormat, key));
         }
         V value = map.get(key);
         if(value == null) {
-            throw new NotFoundException("Key [" + key + "] not found");
+            throw new NotFoundException(String.format(errorMessageFormat, key));
         }
         return value;
     }

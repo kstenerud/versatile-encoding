@@ -85,7 +85,7 @@ public class SpecificationTest {
 //                new Specification.ParameterSpecification("a", Specification.Type.STRING, "The A parameter"),
 //                new Specification.ParameterSpecification("b", Specification.Type.INTEGER, "The B parameter")
 //                );
-//        Parameters parameters = new Parameters(spec)
+//        Message message = new Message(spec)
 //                .set("a", "a value")
 //                .set("b", 100l);
 //    }
@@ -97,10 +97,10 @@ public class SpecificationTest {
 //                new Specification.ParameterSpecification("b", Specification.Type.INTEGER, "The B parameter", Specification.Attribute.OPTIONAL)
 //        );
 //
-//        Parameters parameters = new Parameters(spec)
+//        Message message = new Message(spec)
 //                .set("a", "a value");
 //
-//        parameters.verifyCompleteness();
+//        message.verifyCompleteness();
 //    }
 
 //    @Test(expected = Specification.ValidationException.class)
@@ -109,15 +109,15 @@ public class SpecificationTest {
 //        Specification spec = new Specification(name) {
 //            @Override
 //            public SpecParameters getParameterSpecifications() {
-//                SpecParameters parameters = new SpecParameters();
-//                parameters.addParameter("a", Type.STRING, "The A parameter");
-//                parameters.addOptionalParameter("b", Type.INTEGER, "The B parameter");
-//                return parameters;
+//                SpecParameters message = new SpecParameters();
+//                message.addParameter("a", Type.STRING, "The A parameter");
+//                message.addOptionalParameter("b", Type.INTEGER, "The B parameter");
+//                return message;
 //            }
 //        };
-//        Parameters parameters = new Parameters();
+//        Message message = new Message();
 //        Map<Specification.Type, Class> allowedSubstitutions = new HashMap<>();
-//        spec.validate(parameters, allowedSubstitutions);
+//        spec.validate(message, allowedSubstitutions);
 //    }
 //
 //    @Test
@@ -137,7 +137,7 @@ public class SpecificationTest {
 //                return parameters;
 //            }
 //        };
-//        Parameters parameters = new Parameters()
+//        Message message = new Message()
 //                .withParameter("BOOLEAN", true)
 //                .withParameter("INTEGER", 100l)
 //                .withParameter("FLOAT", 10.5d)
@@ -146,7 +146,7 @@ public class SpecificationTest {
 //                .withParameter("LIST", new LinkedList<>())
 //                .withParameter("MAP", new HashMap<>());
 //        Map<Specification.Type, Class> allowedSubstitutions = new HashMap<>();
-//        spec.validate(parameters, allowedSubstitutions);
+//        spec.validate(message, allowedSubstitutions);
 //    }
 //
 //    @Test
@@ -160,11 +160,11 @@ public class SpecificationTest {
 //                return parameters;
 //            }
 //        };
-//        Parameters parameters = new Parameters()
+//        Message message = new Message()
 //                .withParameter("a", new File("/"));
 //        Map<Specification.Type, Class> allowedSubstitutions = new HashMap<>();
 //        allowedSubstitutions.put(Specification.Type.STRING, File.class);
-//        spec.validate(parameters, allowedSubstitutions);
+//        spec.validate(message, allowedSubstitutions);
 //    }
 //
 //    @Test(expected = Specification.ValidationException.class)
@@ -178,9 +178,9 @@ public class SpecificationTest {
 //                return parameters;
 //            }
 //        };
-//        Parameters parameters = new Parameters()
+//        Message message = new Message()
 //                .withParameter("a", new File("/"));
 //        Map<Specification.Type, Class> allowedSubstitutions = new HashMap<>();
-//        spec.validate(parameters, allowedSubstitutions);
+//        spec.validate(message, allowedSubstitutions);
 //    }
 }

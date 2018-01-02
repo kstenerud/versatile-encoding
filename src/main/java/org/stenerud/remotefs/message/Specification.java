@@ -14,11 +14,12 @@ public class Specification implements Iterable<Specification.ParameterSpecificat
     public final String name;
     public final String description;
     private final List<ParameterSpecification> parameterSpecificationsByIndex;
-    private final StrictMap<String, ParameterSpecification> parameterSpecificationsByName = new StrictMap<>(HashMap::new);
+    private final StrictMap<String, ParameterSpecification> parameterSpecificationsByName;
 
     public Specification(@Nonnull String name, @Nonnull String description, @Nonnull ParameterSpecification ... specifications) {
         this.name = name;
         this.description = description;
+        parameterSpecificationsByName = StrictMap.with(HashMap::new).withErrorFormat("%s: No such parameter in specification " + name);
         parameterSpecificationsByIndex = new ArrayList<>(specifications.length);
         for(ParameterSpecification spec: specifications) {
             this.parameterSpecificationsByIndex.add(spec);

@@ -9,14 +9,14 @@ import java.util.HashMap;
 public class StrictMapTest {
     @Test(expected = NotFoundException.class)
     public void testNotFound() {
-        StrictMap<String, Object> map = new StrictMap<>(HashMap::new);
+        StrictMap<String, Object> map = StrictMap.with(HashMap::new);
         map.put("test", "blah");
         map.get("aaaa");
     }
 
     @Test(expected = NotFoundException.class)
     public void testNullKey() {
-        StrictMap<String, Object> map = new StrictMap<>(HashMap::new);
+        StrictMap<String, Object> map = StrictMap.with(HashMap::new);
         map.put("test", "blah");
         map.get(null);
     }

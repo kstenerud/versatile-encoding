@@ -5,8 +5,12 @@ import org.stenerud.remotefs.codec.BinaryCodec;
 import org.stenerud.remotefs.codec.IntegerCodec;
 import org.stenerud.remotefs.codec.LittleEndianCodec;
 import org.stenerud.remotefs.codec.MessageCodec;
-import org.stenerud.remotefs.message.Parameters;
+import org.stenerud.remotefs.message.InternalExceptionMessageSpecification;
+import org.stenerud.remotefs.message.Message;
+import org.stenerud.remotefs.message.Specification;
+import org.stenerud.remotefs.utility.Closer;
 import org.stenerud.remotefs.utility.BinaryBuffer;
+import org.stenerud.remotefs.utility.LoopingThread;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
@@ -16,38 +20,67 @@ import java.net.SocketException;
 import java.nio.channels.ClosedChannelException;
 import java.util.logging.Logger;
 
-public class StreamTransport implements AutoCloseable {
+public class StreamTransport implements AutoCloseable, Transport {
     private static final Logger LOG = Logger.getLogger(StreamTransport.class.getName());
 
     private final InputStream inStream;
+    private boolean autoflush;
+    private boolean isOpen;
 
     private final OutputStream outStream;
     private final MessageCodec messageCodec;
+    private Listener listener = message -> {};
+    private LoopingThread thread = new LoopingThread() {
+        @Override
+        protected void performLoop() throws Exception {
+            Message message = getNextMessage();
+            listener.onNewMessage(message);
+        }
 
-    public StreamTransport(InputStream inStream, OutputStream outStream, MessageCodec messageCodec) throws IOException {
+        @Override
+        protected void onUnexpectedException(Exception e) {
+//            LOG.info(this + ": unexpected " + e);
+//            e.printStackTrace();
+            listener.onNewMessage(new Message(new InternalExceptionMessageSpecification())
+                    .addUnchecked(Specification.Type.ANY, e));
+            Closer.closeAllAndLogErrors(this);
+        }
+    };
+
+    public StreamTransport(InputStream inStream, OutputStream outStream, MessageCodec messageCodec) {
         this.inStream = inStream;
         this.outStream = outStream;
         this.messageCodec = messageCodec;
+        isOpen = true;
+        thread.start();
     }
 
-    public void sendMessage(@Nonnull Parameters parameters) throws IOException {
+    @Override
+    public void setListener(@Nonnull Listener listener) {
+        this.listener = listener;
+    }
+
+    @Override
+    public void sendMessage(@Nonnull Message message) throws IOException {
         try {
             // TODO: Get this differently
             BinaryBuffer buffer = new BinaryBuffer(10000);
-            BinaryBuffer encodedView = messageCodec.encode(parameters, buffer);
+            BinaryBuffer encodedView = messageCodec.encode(message, buffer);
             writeBuffer(encodedView);
-        } catch(ClosedChannelException e) {
-            throw new DisconnectedException(e);
-        } catch(IOException e) {
-            if(e.getMessage().equals("Broken pipe")) {
-                throw new DisconnectedException(e);
+            if(autoflush) {
+                flush();
             }
-            throw e;
+        } catch(IOException e) {
+            throw new DisconnectedException(e);
         }
     }
 
-    public @Nonnull
-    Parameters getNextMessage() throws IOException {
+
+    private @Nonnull
+    Message getNextMessage() throws IOException {
+        if (!isOpen) {
+            throw new DisconnectedException("Transport is closed");
+        }
         try {
             // TODO: Get this somewhere else
             BinaryBuffer buffer = new BinaryBuffer(10000);
@@ -59,21 +92,22 @@ public class StreamTransport implements AutoCloseable {
             int length = lengthCodec.decode(buffer.startOffset);
             currentOffset += readBytes(buffer, currentOffset, length);
             return messageCodec.decode(buffer.newView(buffer.startOffset, currentOffset));
-        } catch(BinaryCodec.EndOfDataException e) {
-            throw new DisconnectedException(e);
-        } catch(ClosedChannelException e) {
+        } catch (DisconnectedException e) {
+            throw e;
+        } catch(IOException e) {
             throw new DisconnectedException(e);
         }
     }
 
+    @Override
     public void flush() throws IOException {
         outStream.flush();
     }
 
     @Override
     public void close() throws Exception {
-        inStream.close();
-        outStream.close();
+        isOpen = false;
+        Closer.closeAll(thread, inStream, outStream);
     }
 
     private int readBytes(BinaryBuffer buffer, int startOffset, int length) throws IOException {
@@ -83,27 +117,24 @@ public class StreamTransport implements AutoCloseable {
         if(startOffset + length > buffer.endOffset) {
             throw new IllegalArgumentException("Cannot read " + length + " bytes. Only " + (buffer.endOffset - startOffset) + " bytes available");
         }
-        try {
-            int currentOffset = startOffset;
-            int endOffset = startOffset + length;
-            while(currentOffset < endOffset) {
-                int bytesRead = inStream.read(buffer.data, currentOffset, endOffset - currentOffset);
-                if(bytesRead < 0) {
-                    throw new DisconnectedException();
-                }
-                currentOffset += bytesRead;
+        int currentOffset = startOffset;
+        int endOffset = startOffset + length;
+        while(currentOffset < endOffset) {
+            int bytesRead = inStream.read(buffer.data, currentOffset, endOffset - currentOffset);
+            if(bytesRead < 0) {
+                throw new DisconnectedException();
             }
-            return currentOffset - startOffset;
-        } catch (SocketException e) {
-            throw new DisconnectedException(e);
+            currentOffset += bytesRead;
         }
+        return currentOffset - startOffset;
     }
 
     private void writeBuffer(BinaryBuffer buffer) throws IOException {
-        try {
-            outStream.write(buffer.data, buffer.startOffset, buffer.length);
-        } catch(SocketException e) {
-            throw new DisconnectedException(e);
-        }
+        outStream.write(buffer.data, buffer.startOffset, buffer.length);
+    }
+
+    @Override
+    public void setAutoflush(boolean autoflush) {
+        this.autoflush = autoflush;
     }
 }

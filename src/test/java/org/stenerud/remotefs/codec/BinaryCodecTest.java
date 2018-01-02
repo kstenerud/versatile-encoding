@@ -217,11 +217,11 @@ public class BinaryCodecTest {
         BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(new BinaryCodec.Decoder.Visitor() {
             @Override
             public void onValue(Object value) {
-                holder.object = value;
+                holder.set(value);
             }
         });
         decoder.feed(buffer);
-        return (T)holder.object;
+        return (T)holder.get();
     }
 
     private void fillWithSequentialData(BinaryBuffer buffer) {

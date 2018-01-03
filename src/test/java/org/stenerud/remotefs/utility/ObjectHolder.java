@@ -27,4 +27,8 @@ public class ObjectHolder {
         }
         return result;
     }
+
+    public void clear() {
+        queue.clear();
+    }
 }

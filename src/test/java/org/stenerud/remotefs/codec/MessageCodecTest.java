@@ -28,7 +28,7 @@ public class MessageCodecTest {
     @Test
     public void testStatus() throws Exception {
         assertEncodeDecode(new Message(new StatusMessageSpecification())
-                .set(StatusMessageSpecification.JOB_ID, 1)
+                .set(StatusMessageSpecification.PROCESS_ID, 1)
                 .set(StatusMessageSpecification.COMPLETION, 50), 100);
     }
 
@@ -80,7 +80,7 @@ public class MessageCodecTest {
 
     private void assertResourceMessage(int chunkSize) throws Exception {
         assertEncodeDecode(new Message(new ResourceMessageSpecification())
-                .set(ResourceMessageSpecification.STREAM_ID, 1)
+                .set(ResourceMessageSpecification.RESOURCE_ID, 1)
                 .set(ResourceMessageSpecification.CHUNK_COUNT, 1)
                 .set(ResourceMessageSpecification.CHUNK_INDEX, 0)
                 .set(ResourceMessageSpecification.CHUNK, new byte[chunkSize]), chunkSize + 100);

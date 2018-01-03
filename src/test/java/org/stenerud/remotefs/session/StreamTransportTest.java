@@ -22,6 +22,5 @@ public class StreamTransportTest {
             transports.clientSideTransport.sendMessage(message);
             DeepEquality.assertEquals(message, holder.get());
         }
-        Thread.sleep(100);
     }
 }

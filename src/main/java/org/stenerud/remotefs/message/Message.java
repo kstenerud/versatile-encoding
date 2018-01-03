@@ -12,13 +12,15 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
 /**
  * Message.
  */
 public class Message implements Iterable<Object> {
+    private static final Logger LOG = Logger.getLogger(Message.class.getName());
     private static final Map<Specification.Type, Class> TYPE_TO_CLASS = new HashMap<>();
-    private static final Map<Class<?>, Specification.Type> CLASS_TO_TYPE = StrictMap.with(ConcurrentHashMap::new).withErrorFormat("%s is not an allowed parameter type");
+    private static final Map<Class<?>, Specification.Type> CLASS_TO_TYPE = StrictMap.withImplementation(ConcurrentHashMap::new).withErrorFormat("%s is not an allowed parameter type");
     static {
         TYPE_TO_CLASS.put(Specification.Type.INTEGER, Long.class);
         TYPE_TO_CLASS.put(Specification.Type.FLOAT, Double.class);
@@ -35,7 +37,7 @@ public class Message implements Iterable<Object> {
 
     private final Specification specification;
     private final TypeConverter typeConverter = new TypeConverter();
-    private final StrictMap<String, Parameter> parameters = StrictMap.with(HashMap::new).withErrorFormat("%s: No such parameter");
+    private final StrictMap<String, Parameter> parameters = StrictMap.withImplementation(HashMap::new).withErrorFormat("%s: No such parameter");
     private int specIndex = 0;
 
     @Override

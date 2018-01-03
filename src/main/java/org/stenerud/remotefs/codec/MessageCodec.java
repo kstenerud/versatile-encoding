@@ -8,6 +8,7 @@ import org.stenerud.remotefs.utility.StrictMap;
 import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 // Length encoding is s3: vvvvvvvS (vvvvvvvv vvvvvvvv). When S = 1, two more bytes follow.
 // Type encoding is s2: vvvvvvvS (vvvvvvvv). When S = 1, one more byte follows.
@@ -15,6 +16,7 @@ import java.util.Map;
 // Message length is length including length field.
 // Minimum message length is 2.
 public class MessageCodec {
+    private static final Logger LOG = Logger.getLogger(MessageCodec.class.getName());
     public interface Types {
         // total chunks:
         // - positive: Most likely this number of chunks
@@ -36,8 +38,8 @@ public class MessageCodec {
         // abort function call (id)
         // get schema (search params, as summary?)
     }
-    private final Map<Specification, Integer> specToType = StrictMap.with(HashMap::new).withErrorFormat("No message type registered for specification %s");
-    private final Map<Integer, Specification> typeToSpec = StrictMap.with(HashMap::new).withErrorFormat("No specification registered for message type %s");
+    private final Map<Specification, Integer> specToType = StrictMap.withImplementation(HashMap::new).withErrorFormat("No message type registered for specification %s");
+    private final Map<Integer, Specification> typeToSpec = StrictMap.withImplementation(HashMap::new).withErrorFormat("No specification registered for message type %s");
 
     public static final int MAX_MESSAGE_TYPE = IntegerCodec.OneTwo.MAX_VALUE;
 

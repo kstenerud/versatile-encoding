@@ -4,8 +4,10 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public class TypeConverter {
+    private static final Logger LOG = Logger.getLogger(TypeConverter.class.getName());
     public Object promote(@Nullable Object value) {
         if(value == null) {
             return null;

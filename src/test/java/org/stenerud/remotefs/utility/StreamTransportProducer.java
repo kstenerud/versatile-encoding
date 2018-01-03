@@ -1,13 +1,18 @@
 package org.stenerud.remotefs.utility;
 
 import org.stenerud.remotefs.codec.MessageCodec;
+import org.stenerud.remotefs.session.StreamTransport;
 import org.stenerud.remotefs.session.Transport;
 import org.stenerud.remotefs.session.TransportProducer;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.util.logging.Logger;
 
 public class StreamTransportProducer implements TransportProducer {
+    private static final Logger LOG = Logger.getLogger(StreamTransportProducer.class.getName());
     private final MessageCodec messageCodec;
     private Listener listener = transport -> {
         // Ignored
@@ -27,9 +32,22 @@ public class StreamTransportProducer implements TransportProducer {
 
     }
 
-    public Transport newTransport() throws IOException {
-        StreamTransportPair transportPair = new StreamTransportPair(messageCodec);
-        listener.onNewTransport(transportPair.serverSideTransport);
-        return transportPair.clientSideTransport;
+    public Transport produceTransportPair() {
+
+        try {
+            PipedInputStream inToClient = new PipedInputStream();
+            PipedInputStream inToServer = new PipedInputStream();
+            PipedOutputStream outFromClient = new PipedOutputStream(inToClient);
+            PipedOutputStream outFromServer = new PipedOutputStream(inToServer);
+            Transport clientSideTransport = new StreamTransport(inToClient, outFromServer, messageCodec);
+            clientSideTransport.setAutoflush(true);
+            Transport serverSideTransport = new StreamTransport(inToServer, outFromClient, messageCodec);
+            serverSideTransport.setAutoflush(true);
+
+            listener.onNewTransport(serverSideTransport);
+            return clientSideTransport;
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

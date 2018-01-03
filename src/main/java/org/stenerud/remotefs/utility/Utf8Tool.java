@@ -1,6 +1,9 @@
 package org.stenerud.remotefs.utility;
 
+import java.util.logging.Logger;
+
 public class Utf8Tool {
+    private static final Logger LOG = Logger.getLogger(Utf8Tool.class.getName());
     private static final byte MULTIBYTE_MASK = (byte)0x80;
     private static final byte MULTIBYTE_INITIATOR_MASK = (byte)0xc0;
     private static final byte TWO_BYTE_MASK = (byte)0xe0;

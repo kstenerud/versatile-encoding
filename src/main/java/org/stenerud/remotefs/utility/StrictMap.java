@@ -4,8 +4,6 @@ import org.stenerud.remotefs.NotFoundException;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -13,6 +11,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 
 /**
  * Map proxy that throws an exception rather than return null.
@@ -20,21 +19,27 @@ import java.util.function.Supplier;
  * @param <V> Value type
  */
 public class StrictMap<K, V> implements Map<K, V> {
+    private static final Logger LOG = Logger.getLogger(StrictMap.class.getName());
     private final Map<K, V> map;
     private final String errorMessageFormat;
 
-    public static @Nonnull <K, V> StrictMap<K, V> with(@Nonnull Supplier<? extends Map<K, V>> supplier) {
+    public static @Nonnull <K, V> StrictMap<K, V> withImplementation(@Nonnull Supplier<? extends Map<K, V>> supplier) {
         return new StrictMap<K, V>(supplier.get(), "Key [%s] not found");
     }
 
     public static @Nonnull <K, V> StrictMap<K, V> cloning(@Nonnull Map<K, V> map) {
-        return with((Supplier<Map<K, V>>) () -> {
+        return withImplementation((Supplier<Map<K, V>>) () -> {
             try {
                 return map.getClass().getConstructor(Map.class).newInstance(map);
             } catch (Exception e) {
                 throw new IllegalArgumentException(e);
             }
         });
+    }
+
+    public @Nonnull StrictMap<K, V> withContents(@Nonnull Map<K, V> sourceMap) {
+        map.putAll(sourceMap);
+        return this;
     }
 
     private StrictMap(@Nonnull Map<K, V> map, @Nonnull String errorMessageFormat) {

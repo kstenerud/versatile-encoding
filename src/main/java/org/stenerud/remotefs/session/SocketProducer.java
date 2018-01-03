@@ -31,7 +31,8 @@ public class SocketProducer implements AutoCloseable {
         @Override
         protected void performLoop() throws Exception {
             try {
-                listener.onNewSocket(listenerSocket.accept());
+                Socket socket = listenerSocket.accept();
+                listener.onNewSocket(socket);
             } catch(SocketException e) {
                 if(!e.getMessage().equals("Socket closed")) {
                     throw e;

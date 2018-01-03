@@ -2,26 +2,23 @@ package org.stenerud.remotefs.session;
 
 import org.stenerud.remotefs.message.Message;
 import org.stenerud.remotefs.message.Specification;
-import org.stenerud.remotefs.utility.StrictMap;
 
 import javax.annotation.Nonnull;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
 public class MessageRouter implements MessageProducer.Listener {
+    private static final Logger LOG = Logger.getLogger(MessageRouter.class.getName());
 
-    public interface MessageHandler {
-        void handleMessage(@Nonnull Message message);
-    }
+    private final MessageHandlerRegistry handlerRegistry;
+    private final Context context;
 
-    private final Map<Specification, MessageHandler> messageHandlers = StrictMap.with(ConcurrentHashMap::new).withErrorFormat("%s: Unknown message type");
-
-    public void registerHandler(Specification specification, MessageHandler handler) {
-        messageHandlers.put(specification, handler);
+    public MessageRouter(MessageHandlerRegistry handlerRegistry, @Nonnull Context context) {
+        this.handlerRegistry = handlerRegistry;
+        this.context = context;
     }
 
     @Override
     public void onNewMessage(Message message) {
-        messageHandlers.get(message.getSpecification()).handleMessage(message);
+        handlerRegistry.get(message).handleMessage(message, context);
     }
 }

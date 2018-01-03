@@ -5,8 +5,10 @@ import org.stenerud.remotefs.codec.MessageCodec;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.util.logging.Logger;
 
 public class SocketTransportProducer implements TransportProducer {
+    private static final Logger LOG = Logger.getLogger(SocketTransportProducer.class.getName());
     private final SocketProducer socketProducer;
     private final MessageCodec messageCodec;
 

@@ -2,6 +2,7 @@ package org.stenerud.remotefs.utility;
 
 import org.stenerud.remotefs.session.SocketTransport;
 import org.stenerud.remotefs.codec.MessageCodec;
+import org.stenerud.remotefs.session.SocketTransportProducer;
 import org.stenerud.remotefs.session.Transport;
 
 import java.io.IOException;

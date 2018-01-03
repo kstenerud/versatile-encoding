@@ -6,11 +6,13 @@ import org.stenerud.remotefs.utility.StrictMap;
 
 import javax.annotation.Nonnull;
 import java.util.*;
+import java.util.logging.Logger;
 
 /**
  * Specifies and validates message parameter types and values.
  */
 public class Specification implements Iterable<Specification.ParameterSpecification> {
+    private static final Logger LOG = Logger.getLogger(Specification.class.getName());
     public final String name;
     public final String description;
     private final List<ParameterSpecification> parameterSpecificationsByIndex;
@@ -19,7 +21,7 @@ public class Specification implements Iterable<Specification.ParameterSpecificat
     public Specification(@Nonnull String name, @Nonnull String description, @Nonnull ParameterSpecification ... specifications) {
         this.name = name;
         this.description = description;
-        parameterSpecificationsByName = StrictMap.with(HashMap::new).withErrorFormat("%s: No such parameter in specification " + name);
+        parameterSpecificationsByName = StrictMap.withImplementation(HashMap::new).withErrorFormat("%s: No such parameter in specification " + name);
         parameterSpecificationsByIndex = new ArrayList<>(specifications.length);
         for(ParameterSpecification spec: specifications) {
             this.parameterSpecificationsByIndex.add(spec);

@@ -2,8 +2,10 @@ package org.stenerud.remotefs.utility;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
+import java.util.logging.Logger;
 
 public class Named {
+    private static final Logger LOG = Logger.getLogger(Named.class.getName());
     public final String name;
 
     public Named(@Nonnull String name) {

@@ -15,11 +15,13 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.util.*;
+import java.util.logging.Logger;
 
 /**
  * Converts to/from a compact binary format.
  */
 public class BinaryCodec {
+    private static final Logger LOG = Logger.getLogger(BinaryCodec.class.getName());
     private static final int SMALLINT_MIN = (byte)0x89;
     private static final int SMALLINT_MAX = (byte)0x74;
 

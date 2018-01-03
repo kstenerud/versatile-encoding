@@ -1,13 +1,13 @@
 package org.stenerud.remotefs.utility;
 
-import org.stenerud.remotefs.codec.MessageCodec;
 import org.stenerud.remotefs.session.Transport;
 import org.stenerud.remotefs.session.TransportProducer;
 
 import javax.annotation.Nonnull;
-import java.io.IOException;
+import java.util.logging.Logger;
 
 public class SimpleTransportProducer implements TransportProducer {
+    private static final Logger LOG = Logger.getLogger(SimpleTransportProducer.class.getName());
     private Listener listener = transport -> {
         // Ignored
     };
@@ -22,9 +22,10 @@ public class SimpleTransportProducer implements TransportProducer {
 
     }
 
-    public Transport newTransport() throws IOException {
-        SimpleTransport transport = new SimpleTransport();
-        listener.onNewTransport(transport);
-        return transport;
+    public Transport produceTransportPair() {
+        SimpleTransport transport1 = new SimpleTransport();
+        SimpleTransport transport2 = new SimpleTransport(transport1);
+        listener.onNewTransport(transport1);
+        return transport2;
     }
 }

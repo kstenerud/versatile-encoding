@@ -18,15 +18,9 @@ public class SocketTransportTest {
         Message message = new Message(specification).add(1);
         ObjectHolder holder = new ObjectHolder();
         try(SocketTransportPair transports = new SocketTransportPair(messageCodec)) {
-            transports.serverSideTransport.setListener(new MessageProducer.Listener() {
-                @Override
-                public void onNewMessage(Message message) {
-                    holder.set(message);
-                }
-            });
+            transports.serverSideTransport.setListener(message1 -> holder.set(message1));
             transports.clientSideTransport.sendMessage(message);
+            DeepEquality.assertEquals(message, holder.get());
         }
-        Thread.sleep(100);
-        DeepEquality.assertEquals(message, holder.get());
     }
 }

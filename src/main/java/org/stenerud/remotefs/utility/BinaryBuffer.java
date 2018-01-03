@@ -4,8 +4,10 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import java.io.UnsupportedEncodingException;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 public class BinaryBuffer {
+    private static final Logger LOG = Logger.getLogger(BinaryBuffer.class.getName());
     public final byte[] data;
     public final int startOffset;
     public final int endOffset;

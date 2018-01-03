@@ -6,8 +6,10 @@ import org.stenerud.remotefs.utility.Int128Holder;
 import javax.annotation.Nonnull;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.logging.Logger;
 
 public class LittleEndianCodec {
+    private static final Logger LOG = Logger.getLogger(LittleEndianCodec.class.getName());
     private final BinaryBuffer buffer;
     private final ByteBuffer byteBuffer;
 

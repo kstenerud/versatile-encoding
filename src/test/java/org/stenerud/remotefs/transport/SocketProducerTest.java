@@ -1,6 +1,7 @@
-package org.stenerud.remotefs.session;
+package org.stenerud.remotefs.transport;
 
 import org.junit.Test;
+import org.stenerud.remotefs.transport.SocketProducer;
 import org.stenerud.remotefs.utility.ObjectHolder;
 import org.stenerud.remotefs.utility.PortCounter;
 

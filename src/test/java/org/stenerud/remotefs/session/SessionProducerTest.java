@@ -1,9 +1,9 @@
 package org.stenerud.remotefs.session;
 
 import org.junit.Test;
-import org.stenerud.remotefs.message.Specification;
+import org.stenerud.remotefs.transport.MessageHandlerRegistry;
 import org.stenerud.remotefs.utility.ObjectHolder;
-import org.stenerud.remotefs.utility.SimpleTransportProducer;
+import org.stenerud.remotefs.transport.SimpleTransportProducer;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;

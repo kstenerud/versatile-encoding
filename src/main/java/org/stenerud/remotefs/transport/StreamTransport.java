@@ -1,7 +1,6 @@
-package org.stenerud.remotefs.session;
+package org.stenerud.remotefs.transport;
 
-import org.stenerud.remotefs.DisconnectedException;
-import org.stenerud.remotefs.codec.BinaryCodec;
+import org.stenerud.remotefs.exception.DisconnectedException;
 import org.stenerud.remotefs.codec.IntegerCodec;
 import org.stenerud.remotefs.codec.LittleEndianCodec;
 import org.stenerud.remotefs.codec.MessageCodec;
@@ -16,8 +15,6 @@ import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.SocketException;
-import java.nio.channels.ClosedChannelException;
 import java.util.logging.Logger;
 
 public class StreamTransport implements AutoCloseable, Transport {
@@ -29,7 +26,7 @@ public class StreamTransport implements AutoCloseable, Transport {
 
     private final OutputStream outStream;
     private final MessageCodec messageCodec;
-    private Listener listener = message -> {};
+    private MessageProducer.Listener listener = message -> {};
     private LoopingThread thread = new LoopingThread() {
         @Override
         protected void performLoop() throws Exception {
@@ -56,7 +53,7 @@ public class StreamTransport implements AutoCloseable, Transport {
     }
 
     @Override
-    public void setListener(@Nonnull Listener listener) {
+    public void setListener(@Nonnull MessageProducer.Listener listener) {
         this.listener = listener;
     }
 

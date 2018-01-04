@@ -1,9 +1,9 @@
-package org.stenerud.remotefs.utility;
+package org.stenerud.remotefs.transport;
 
-import org.stenerud.remotefs.session.SocketTransport;
+import org.stenerud.remotefs.transport.SocketTransport;
 import org.stenerud.remotefs.codec.MessageCodec;
-import org.stenerud.remotefs.session.SocketTransportProducer;
-import org.stenerud.remotefs.session.Transport;
+import org.stenerud.remotefs.transport.Transport;
+import org.stenerud.remotefs.utility.PortCounter;
 
 import java.io.IOException;
 import java.net.ServerSocket;

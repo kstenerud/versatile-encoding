@@ -1,4 +1,4 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.exception;
 
 public class NotFoundException extends RuntimeException {
 

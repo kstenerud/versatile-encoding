@@ -1,8 +1,11 @@
-package org.stenerud.remotefs.session;
+package org.stenerud.remotefs.transport;
 
 import org.junit.Test;
 import org.stenerud.remotefs.message.Message;
 import org.stenerud.remotefs.message.Specification;
+import org.stenerud.remotefs.session.Context;
+import org.stenerud.remotefs.transport.MessageHandlerRegistry;
+import org.stenerud.remotefs.transport.MessageRouter;
 import org.stenerud.remotefs.utility.ObjectHolder;
 
 import static org.junit.Assert.assertTrue;

@@ -1,11 +1,11 @@
-package org.stenerud.remotefs.session;
+package org.stenerud.remotefs.transport;
 
 import org.junit.Test;
 import org.stenerud.remotefs.codec.MessageCodec;
+import org.stenerud.remotefs.transport.SocketTransportProducer;
 import org.stenerud.remotefs.utility.ObjectHolder;
 import org.stenerud.remotefs.utility.PortCounter;
 
-import javax.annotation.Nonnull;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 

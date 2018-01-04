@@ -1,6 +1,6 @@
 package org.stenerud.remotefs.message;
 
-import org.stenerud.remotefs.NotFoundException;
+import org.stenerud.remotefs.exception.NotFoundException;
 import org.stenerud.remotefs.utility.Named;
 import org.stenerud.remotefs.utility.StrictMap;
 

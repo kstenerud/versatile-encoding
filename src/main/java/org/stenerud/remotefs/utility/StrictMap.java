@@ -1,6 +1,6 @@
 package org.stenerud.remotefs.utility;
 
-import org.stenerud.remotefs.NotFoundException;
+import org.stenerud.remotefs.exception.NotFoundException;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;

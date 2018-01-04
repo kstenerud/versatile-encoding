@@ -13,7 +13,7 @@ public class MessageCodecTest {
     @Test
     public void testException() throws Exception {
         assertEncodeDecode(new Message(new ExceptionMessageSpecification())
-                .set(ExceptionMessageSpecification.CONTEXT_ID, 1)
+                .set(ExceptionMessageSpecification.PROCESS_ID, 1)
                 .set(ExceptionMessageSpecification.TYPE, 10)
                 .set(ExceptionMessageSpecification.MESSAGE, "It's broken!"), 100);
     }
@@ -21,7 +21,7 @@ public class MessageCodecTest {
     @Test
     public void testException2() throws Exception {
         assertEncodeDecode(new Message(new ExceptionMessageSpecification())
-                .set(ExceptionMessageSpecification.CONTEXT_ID, 1)
+                .set(ExceptionMessageSpecification.PROCESS_ID, 1)
                 .set(ExceptionMessageSpecification.TYPE, 10), 100);
     }
 

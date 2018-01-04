@@ -1,4 +1,4 @@
-package org.stenerud.remotefs.session;
+package org.stenerud.remotefs.transport;
 
 import javax.annotation.Nonnull;
 

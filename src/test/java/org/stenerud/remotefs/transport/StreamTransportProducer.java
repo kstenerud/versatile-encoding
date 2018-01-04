@@ -1,9 +1,6 @@
-package org.stenerud.remotefs.utility;
+package org.stenerud.remotefs.transport;
 
 import org.stenerud.remotefs.codec.MessageCodec;
-import org.stenerud.remotefs.session.StreamTransport;
-import org.stenerud.remotefs.session.Transport;
-import org.stenerud.remotefs.session.TransportProducer;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;

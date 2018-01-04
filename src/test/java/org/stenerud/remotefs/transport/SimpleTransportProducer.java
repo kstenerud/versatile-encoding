@@ -1,7 +1,4 @@
-package org.stenerud.remotefs.utility;
-
-import org.stenerud.remotefs.session.Transport;
-import org.stenerud.remotefs.session.TransportProducer;
+package org.stenerud.remotefs.transport;
 
 import javax.annotation.Nonnull;
 import java.util.logging.Logger;

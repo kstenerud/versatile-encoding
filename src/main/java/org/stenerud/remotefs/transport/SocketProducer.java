@@ -1,4 +1,4 @@
-package org.stenerud.remotefs.session;
+package org.stenerud.remotefs.transport;
 
 import org.stenerud.remotefs.utility.Closer;
 import org.stenerud.remotefs.utility.LoopingThread;

@@ -10,7 +10,7 @@ public class ExceptionMessageSpecification extends Specification {
     public ExceptionMessageSpecification() {
         super("exception",
                 "Exception notification",
-                new ParameterSpecification(PROCESS_ID, Specification.Type.INTEGER, "The process associated with this exception"),
+                new ParameterSpecification(PROCESS_ID, Specification.Type.INTEGER, "The process (if any) associated with this exception", Attribute.OPTIONAL),
                 new ParameterSpecification(RESOURCE_ID, Specification.Type.INTEGER, "The resource (if any) associated with this exception", Attribute.OPTIONAL),
                 new ParameterSpecification(TYPE, Specification.Type.INTEGER, "Type of exception"),
                 new ParameterSpecification(MESSAGE, Specification.Type.STRING, "Description of the exception", Attribute.OPTIONAL),

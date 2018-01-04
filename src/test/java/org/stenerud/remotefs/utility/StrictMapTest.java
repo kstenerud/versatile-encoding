@@ -1,7 +1,7 @@
 package org.stenerud.remotefs.utility;
 
 import org.junit.Test;
-import org.stenerud.remotefs.NotFoundException;
+import org.stenerud.remotefs.exception.NotFoundException;
 
 import java.util.HashMap;
 

@@ -1,8 +1,7 @@
 package org.stenerud.remotefs.message;
 
 import org.junit.Test;
-import org.stenerud.remotefs.NotFoundException;
-import org.stenerud.remotefs.message.Specification;
+import org.stenerud.remotefs.exception.NotFoundException;
 import org.stenerud.remotefs.utility.DeepEquality;
 
 import java.util.*;

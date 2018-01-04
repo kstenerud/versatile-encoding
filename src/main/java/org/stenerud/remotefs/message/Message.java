@@ -1,9 +1,9 @@
 package org.stenerud.remotefs.message;
 
-import org.stenerud.remotefs.NotFoundException;
+import org.stenerud.remotefs.exception.NotFoundException;
 import org.stenerud.remotefs.utility.BinaryBuffer;
+import org.stenerud.remotefs.utility.NumericPromoter;
 import org.stenerud.remotefs.utility.StrictMap;
-import org.stenerud.remotefs.utility.TypeConverter;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -36,7 +36,7 @@ public class Message implements Iterable<Object> {
     }
 
     private final Specification specification;
-    private final TypeConverter typeConverter = new TypeConverter();
+    private final NumericPromoter numericPromoter = new NumericPromoter();
     private final StrictMap<String, Parameter> parameters = StrictMap.withImplementation(HashMap::new).withErrorFormat("%s: No such parameter");
     private int specIndex = 0;
 
@@ -110,7 +110,7 @@ public class Message implements Iterable<Object> {
     private Object convert(@Nullable Object value, @Nonnull Specification.Type type) {
         Class destClass = TYPE_TO_CLASS.get(type);
         if(destClass != null) {
-            value = typeConverter.convert(value, destClass);
+            value = numericPromoter.convert(value, destClass);
         }
         return value;
     }
@@ -118,7 +118,7 @@ public class Message implements Iterable<Object> {
     public @Nonnull
     Message set(@Nonnull String name, @Nullable Object value) {
         Specification.ParameterSpecification paramSpec = specification.getByName(name);
-        value = typeConverter.promote(value);
+        value = numericPromoter.promote(value);
         value = convert(value, paramSpec.type);
         Specification.Type type = getEffectiveType(paramSpec, value);
         return setUnchecked(name, type, value);

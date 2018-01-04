@@ -1,5 +1,8 @@
 package org.stenerud.remotefs.session;
 
+import org.stenerud.remotefs.transport.MessageHandlerRegistry;
+import org.stenerud.remotefs.transport.Transport;
+import org.stenerud.remotefs.transport.TransportProducer;
 import org.stenerud.remotefs.utility.Closer;
 
 import javax.annotation.Nonnull;

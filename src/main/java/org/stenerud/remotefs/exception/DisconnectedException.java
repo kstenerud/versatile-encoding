@@ -1,4 +1,4 @@
-package org.stenerud.remotefs;
+package org.stenerud.remotefs.exception;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;

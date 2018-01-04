@@ -1,7 +1,6 @@
-package org.stenerud.remotefs.utility;
+package org.stenerud.remotefs.transport;
 
 import org.stenerud.remotefs.message.Message;
-import org.stenerud.remotefs.session.Transport;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;

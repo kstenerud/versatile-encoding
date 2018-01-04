@@ -1,4 +1,4 @@
-package org.stenerud.remotefs.session;
+package org.stenerud.remotefs.transport;
 
 import org.junit.Test;
 import org.stenerud.remotefs.codec.MessageCodec;
@@ -6,7 +6,6 @@ import org.stenerud.remotefs.message.Message;
 import org.stenerud.remotefs.message.Specification;
 import org.stenerud.remotefs.utility.DeepEquality;
 import org.stenerud.remotefs.utility.ObjectHolder;
-import org.stenerud.remotefs.utility.StreamTransportPair;
 
 public class StreamTransportTest {
     @Test

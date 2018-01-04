@@ -1,7 +1,6 @@
-package org.stenerud.remotefs.utility;
+package org.stenerud.remotefs.transport;
 
 import org.stenerud.remotefs.codec.MessageCodec;
-import org.stenerud.remotefs.session.Transport;
 
 import java.util.LinkedList;
 import java.util.List;

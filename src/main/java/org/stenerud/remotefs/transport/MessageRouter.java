@@ -1,7 +1,7 @@
-package org.stenerud.remotefs.session;
+package org.stenerud.remotefs.transport;
 
 import org.stenerud.remotefs.message.Message;
-import org.stenerud.remotefs.message.Specification;
+import org.stenerud.remotefs.session.Context;
 
 import javax.annotation.Nonnull;
 import java.util.logging.Logger;

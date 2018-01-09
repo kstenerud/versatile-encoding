@@ -6,6 +6,7 @@ import org.stenerud.remotefs.transport.TransportProducer;
 import org.stenerud.remotefs.utility.Closer;
 
 import javax.annotation.Nonnull;
+import java.util.Map;
 import java.util.logging.Logger;
 
 public class SessionProducer {
@@ -15,7 +16,7 @@ public class SessionProducer {
     }
 
     private final TransportProducer transportProducer;
-    private final MessageHandlerRegistry messageHandlerRegistry;
+    private final Map<String, MessageHandler> messageHandlers;
     private final Context context;
     private Listener listener = new Listener() {
         @Override
@@ -24,14 +25,14 @@ public class SessionProducer {
         }
     };
 
-    public SessionProducer(TransportProducer transportProducer, MessageHandlerRegistry messageHandlerRegistry, Context context) {
+    public SessionProducer(TransportProducer transportProducer, Map<String, MessageHandler> messageHandlers, Context context) {
         this.transportProducer = transportProducer;
-        this.messageHandlerRegistry = messageHandlerRegistry;
+        this.messageHandlers = messageHandlers;
         this.context = new Context(context);
         transportProducer.setListener(new TransportProducer.Listener() {
             @Override
             public void onNewTransport(@Nonnull Transport transport) {
-                listener.onNewSession(new Session(transport, messageHandlerRegistry, context));
+                listener.onNewSession(new Session(transport, messageHandlers, context));
             }
         });
     }

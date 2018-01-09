@@ -4,7 +4,7 @@ import org.stenerud.remotefs.exception.DisconnectedException;
 import org.stenerud.remotefs.codec.IntegerCodec;
 import org.stenerud.remotefs.codec.LittleEndianCodec;
 import org.stenerud.remotefs.codec.MessageCodec;
-import org.stenerud.remotefs.message.InternalExceptionMessageSpecification;
+import org.stenerud.remotefs.message.InternalExceptionMessageBuilder;
 import org.stenerud.remotefs.message.Message;
 import org.stenerud.remotefs.message.Specification;
 import org.stenerud.remotefs.utility.Closer;
@@ -28,6 +28,7 @@ public class StreamTransport implements AutoCloseable, Transport {
     private final MessageCodec messageCodec;
     private MessageProducer.Listener listener = message -> {};
     private LoopingThread thread = new LoopingThread() {
+        private InternalExceptionMessageBuilder exceptionMessageBuilder = new InternalExceptionMessageBuilder();
         @Override
         protected void performLoop() throws Exception {
             Message message = getNextMessage();
@@ -38,8 +39,7 @@ public class StreamTransport implements AutoCloseable, Transport {
         protected void onUnexpectedException(Exception e) {
 //            LOG.info(this + ": unexpected " + e);
 //            e.printStackTrace();
-            listener.onNewMessage(new Message(new InternalExceptionMessageSpecification())
-                    .addUnchecked(Specification.Type.ANY, e));
+            listener.onNewMessage(exceptionMessageBuilder.newMessage(e));
             Closer.closeAllAndLogErrors(this);
         }
     };

@@ -1,4 +1,8 @@
 package org.stenerud.remotefs.session;
 
-public class OutgoingResource {
+
+public class OutgoingResource<T> {
+    public void add(T data) {
+
+    }
 }

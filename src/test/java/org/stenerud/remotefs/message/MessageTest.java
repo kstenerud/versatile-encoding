@@ -1,5 +1,6 @@
 package org.stenerud.remotefs.message;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.junit.Test;
 import org.stenerud.remotefs.exception.NotFoundException;
 import org.stenerud.remotefs.utility.DeepEquality;
@@ -149,13 +150,13 @@ public class MessageTest {
                 .add(expectedMap);
         message.verifyCompleteness();
 
-        assertEquals(expectedBoolean, message.getBoolean("boolean"));
-        assertEquals(expectedInteger, message.getLong("int"));
-        assertEquals(expectedFloat, message.getDouble("float"), 0.0001);
-        assertEquals(expectedString, message.getString("string"));
-        assertEquals(expectedBytes, message.getBytes("bytes"));
-        assertEquals(expectedList, message.getList("list"));
-        assertEquals(expectedMap, message.getMap("map"));
+        assertEquals(expectedBoolean, message.get("boolean", Boolean.class));
+        assertEquals(expectedInteger, (long)message.get("int", Long.class));
+        assertEquals(expectedFloat, message.get("float", Double.class), 0.0001);
+        assertEquals(expectedString, message.get("string", String.class));
+        assertEquals(expectedBytes, message.get("bytes", byte[].class));
+        assertEquals(expectedList, message.get("list", List.class));
+        assertEquals(expectedMap, message.get("map", Map.class));
         DeepEquality.assertEquals(expectedInteger, message.getObject("int"));
         assertEquals(expectedFloat, message.get("float", Double.class));
     }
@@ -180,13 +181,13 @@ public class MessageTest {
                 .set("map", expectedMap);
         message.verifyCompleteness();
 
-        assertEquals(expectedBoolean, message.getBoolean("boolean"));
-        assertEquals(expectedInteger, message.getLong("int"));
-        assertEquals(expectedFloat, message.getDouble("float"), 0.0001);
-        assertEquals(expectedString, message.getString("string"));
-        assertEquals(expectedBytes, message.getBytes("bytes"));
-        assertEquals(expectedList, message.getList("list"));
-        assertEquals(expectedMap, message.getMap("map"));
+        assertEquals(expectedBoolean, message.get("boolean", Boolean.class));
+        assertEquals(expectedInteger, (long)message.get("int", Long.class));
+        assertEquals(expectedFloat, message.get("float", Double.class), 0.0001);
+        assertEquals(expectedString, message.get("string", String.class));
+        assertEquals(expectedBytes, message.get("bytes", byte[].class));
+        assertEquals(expectedList, message.get("list", List.class));
+        assertEquals(expectedMap, message.get("map", Map.class));
         DeepEquality.assertEquals(expectedInteger, message.getObject("int"));
         assertEquals(expectedFloat, message.get("float", Double.class));
     }
@@ -207,13 +208,13 @@ public class MessageTest {
                 .set("map", expectedMap);
         message.verifyCompleteness();
 
-        assertEquals(expectedBoolean, message.getBoolean("boolean"));
-        assertEquals(expectedInteger, message.getLong("int"));
+        assertEquals(expectedBoolean, message.get("boolean", Boolean.class));
+        assertEquals(expectedInteger, (long)message.get("int", Long.class));
         assertFalse(message.isPresent("float"));
-        assertEquals(expectedString, message.getString("string"));
+        assertEquals(expectedString, message.get("string", String.class));
         assertFalse(message.isPresent("bytes"));
-        assertEquals(expectedList, message.getList("list"));
-        assertEquals(expectedMap, message.getMap("map"));
+        assertEquals(expectedList, message.get("list", List.class));
+        assertEquals(expectedMap, message.get("map", Map.class));
     }
 
     @Test

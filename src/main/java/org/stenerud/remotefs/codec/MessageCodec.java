@@ -1,8 +1,8 @@
 package org.stenerud.remotefs.codec;
 
 import org.stenerud.remotefs.message.Message;
+import org.stenerud.remotefs.message.MessageBuilder;
 import org.stenerud.remotefs.utility.BinaryBuffer;
-import org.stenerud.remotefs.message.Specification;
 import org.stenerud.remotefs.utility.StrictMap;
 
 import javax.annotation.Nonnull;
@@ -38,22 +38,22 @@ public class MessageCodec {
         // abort function call (id)
         // get schema (search params, as summary?)
     }
-    private final Map<Specification, Integer> specToType = StrictMap.withImplementation(HashMap::new).withErrorFormat("No message type registered for specification %s");
-    private final Map<Integer, Specification> typeToSpec = StrictMap.withImplementation(HashMap::new).withErrorFormat("No specification registered for message type %s");
+    private final Map<String, Integer> identifierToType = StrictMap.withImplementation(HashMap::new).withErrorFormat("No message type registered for specification %s");
+    private final Map<Integer, MessageBuilder> typeToBuilder = StrictMap.withImplementation(HashMap::new).withErrorFormat("No specification registered for message type %s");
 
     public static final int MAX_MESSAGE_TYPE = IntegerCodec.OneTwo.MAX_VALUE;
 
-    public void registerSpecification(@Nonnull Specification spec, int type) {
+    public void registerBuilder(@Nonnull MessageBuilder builder, int type) {
         if(type > MAX_MESSAGE_TYPE) {
             throw new IllegalArgumentException("Message type " + type + " is outside of allowed range");
         }
-        specToType.put(spec, type);
-        typeToSpec.put(type, spec);
+        identifierToType.put(builder.getIdentifier(), type);
+        typeToBuilder.put(type, builder);
     }
 
     public BinaryBuffer encode(@Nonnull Message message, @Nonnull BinaryBuffer buffer) throws BinaryCodec.NoRoomException {
         message.verifyCompleteness();
-        int type = specToType.get(message.getSpecification());
+        int type = identifierToType.get(message.getIdentifier());
         final int maxContentsOffset = IntegerCodec.OneTwo.MAX_LENGTH + IntegerCodec.OneThree.MAX_LENGTH;
         BinaryBuffer offsetView = buffer.newView(buffer.startOffset + maxContentsOffset);
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(offsetView);
@@ -85,8 +85,8 @@ public class MessageCodec {
         int offset = buffer.startOffset + lengthCodec.getEncodedLength(buffer.startOffset);
         int type = typeCodec.decode(offset);
         offset += typeCodec.getRequiredEncodingLength(type);
-        Specification specification = typeToSpec.get(type);
-        Message message = new Message(specification);
+        MessageBuilder builder = typeToBuilder.get(type);
+        Message message = builder.newMessage();
         BinaryCodec.Decoder decoder = new BinaryCodec.Decoder(message::add);
         decoder.feed(buffer.newView(offset));
 

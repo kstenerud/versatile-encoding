@@ -1,4 +1,0 @@
-package org.stenerud.remotefs.session;
-
-public class ResourceMonitor {
-}

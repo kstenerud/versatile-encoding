@@ -1,10 +1,9 @@
-package org.stenerud.remotefs.codec;
+package org.stenerud.remotefs.message;
 
 import org.junit.Test;
-import org.stenerud.remotefs.message.*;
+import org.stenerud.remotefs.codec.MessageCodec;
 import org.stenerud.remotefs.utility.BinaryBuffer;
 import org.stenerud.remotefs.utility.DeepEquality;
-import org.stenerud.remotefs.message.Message;
 
 import static org.junit.Assert.assertTrue;
 
@@ -12,24 +11,17 @@ public class MessageCodecTest {
 
     @Test
     public void testException() throws Exception {
-        assertEncodeDecode(new Message(new ExceptionMessageSpecification())
-                .set(ExceptionMessageSpecification.PROCESS_ID, 1)
-                .set(ExceptionMessageSpecification.TYPE, 10)
-                .set(ExceptionMessageSpecification.MESSAGE, "It's broken!"), 100);
+        assertEncodeDecode(new ExceptionMessageBuilder().newMessage((long)1, null, 10, "It's broken!", null), 100);
     }
 
     @Test
     public void testException2() throws Exception {
-        assertEncodeDecode(new Message(new ExceptionMessageSpecification())
-                .set(ExceptionMessageSpecification.PROCESS_ID, 1)
-                .set(ExceptionMessageSpecification.TYPE, 10), 100);
+        assertEncodeDecode(new ExceptionMessageBuilder().newMessage((long)1, null, 10, null, null), 100);
     }
 
     @Test
     public void testStatus() throws Exception {
-        assertEncodeDecode(new Message(new StatusMessageSpecification())
-                .set(StatusMessageSpecification.PROCESS_ID, 1)
-                .set(StatusMessageSpecification.COMPLETION, 50), 100);
+        assertEncodeDecode(new ProcessStatusMessageBuilder().newMessage(1, 50), 100);
     }
 
     @Test
@@ -79,18 +71,14 @@ public class MessageCodecTest {
     }
 
     private void assertResourceMessage(int chunkSize) throws Exception {
-        assertEncodeDecode(new Message(new ResourceMessageSpecification())
-                .set(ResourceMessageSpecification.RESOURCE_ID, 1)
-                .set(ResourceMessageSpecification.CHUNK_COUNT, 1)
-                .set(ResourceMessageSpecification.CHUNK_INDEX, 0)
-                .set(ResourceMessageSpecification.CHUNK, new byte[chunkSize]), chunkSize + 100);
+        assertEncodeDecode(new ResourceMessageBuilder().newMessage(1, 1, 0,new byte[chunkSize]),chunkSize + 100);
     }
 
     private MessageCodec getStandardMessageCodec() {
         MessageCodec messageCodec = new MessageCodec();
-        messageCodec.registerSpecification(new ExceptionMessageSpecification(), MessageCodec.Types.EXCEPTION);
-        messageCodec.registerSpecification(new ResourceMessageSpecification(), MessageCodec.Types.RESOURCE);
-        messageCodec.registerSpecification(new StatusMessageSpecification(), MessageCodec.Types.STATUS);
+        messageCodec.registerBuilder(new ExceptionMessageBuilder(), MessageCodec.Types.EXCEPTION);
+        messageCodec.registerBuilder(new ResourceMessageBuilder(), MessageCodec.Types.RESOURCE);
+        messageCodec.registerBuilder(new ProcessStatusMessageBuilder(), MessageCodec.Types.STATUS);
         return messageCodec;
     }
 
@@ -114,11 +102,9 @@ public class MessageCodecTest {
 
     private void assertMessageWithTypeAndSize(int type, int size) throws Exception {
         MessageCodec codec = new MessageCodec();
-        Specification specification = new Specification("test", "description",
-                new Specification.ParameterSpecification("chunk", Specification.Type.ANY, "The chunk data")
-                );
-        codec.registerSpecification(specification, type);
-        Message message = new Message(specification).add(new byte[size]);
+        ExampleChunkMessageBuilder builder = new ExampleChunkMessageBuilder();
+        codec.registerBuilder(builder, type);
+        Message message = builder.newMessage(new byte[size]);
         BinaryBuffer buffer = new BinaryBuffer(size + 11);
         BinaryBuffer encodedView = codec.encode(message, buffer);
         Message result = codec.decode(encodedView);

@@ -2,6 +2,7 @@ package org.stenerud.remotefs.transport;
 
 import org.stenerud.remotefs.message.Message;
 import org.stenerud.remotefs.message.Specification;
+import org.stenerud.remotefs.session.MessageHandler;
 import org.stenerud.remotefs.utility.StrictMap;
 
 import java.util.Map;
@@ -17,6 +18,6 @@ public class MessageHandlerRegistry {
     }
 
     public MessageHandler get(Message message) {
-        return messageHandlers.get(message.getSpecification());
+        return messageHandlers.get(message.getIdentifier());
     }
 }

@@ -1,4 +1,4 @@
-package org.stenerud.remotefs.transport;
+package org.stenerud.remotefs.session;
 
 import org.stenerud.remotefs.message.Message;
 import org.stenerud.remotefs.session.Context;

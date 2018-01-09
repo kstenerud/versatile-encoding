@@ -19,14 +19,21 @@ public class Specification implements Iterable<Specification.ParameterSpecificat
     private final StrictMap<String, ParameterSpecification> parameterSpecificationsByName;
 
     public Specification(@Nonnull String name, @Nonnull String description, @Nonnull ParameterSpecification ... specifications) {
+        this(name, description, Arrays.asList(specifications));
+    }
+
+    public Specification(@Nonnull String name, @Nonnull String description, @Nonnull List<ParameterSpecification> specifications) {
         this.name = name;
         this.description = description;
+        parameterSpecificationsByIndex = new ArrayList<>(specifications);
         parameterSpecificationsByName = StrictMap.withImplementation(HashMap::new).withErrorFormat("%s: No such parameter in specification " + name);
-        parameterSpecificationsByIndex = new ArrayList<>(specifications.length);
         for(ParameterSpecification spec: specifications) {
-            this.parameterSpecificationsByIndex.add(spec);
             this.parameterSpecificationsByName.put(spec.name, spec);
         }
+    }
+
+    public Specification(@Nonnull Specification them) {
+        this(them.name, them.description, them.parameterSpecificationsByIndex);
     }
 
     public @Nonnull ParameterSpecification getByName(@Nonnull String name) {
@@ -37,7 +44,7 @@ public class Specification implements Iterable<Specification.ParameterSpecificat
         try {
             return parameterSpecificationsByIndex.get(index);
         } catch(IndexOutOfBoundsException e) {
-            throw new NotFoundException(e);
+            throw new NotFoundException("No parameter at index " + index);
         }
     }
 
@@ -80,14 +87,13 @@ public class Specification implements Iterable<Specification.ParameterSpecificat
         private Type(@Nonnull String name) {
             super(name);
         }
-        // TODO: More granular types for what the msg receiver is expecting to use.
-        // TODO: How does this affect free-form maps & lists & ANY?
-        // TODO: int8, int16, int32, int64, float32, float64, date, others as-is
         public static final Type BOOLEAN = new Type("boolean");
         public static final Type INTEGER = new Type("integer");
         public static final Type FLOAT = new Type("float");
+        public static final Type DECIMAL = new Type("decimal");
         public static final Type STRING = new Type("string");
         public static final Type BYTES = new Type("bytes");
+        public static final Type DATE = new Type("date");
         public static final Type LIST = new Type("list");
         public static final Type MAP = new Type("map");
         public static final Type ANY = new Type("any");

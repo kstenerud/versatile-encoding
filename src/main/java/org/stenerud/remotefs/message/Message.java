@@ -2,15 +2,15 @@ package org.stenerud.remotefs.message;
 
 import org.stenerud.remotefs.exception.NotFoundException;
 import org.stenerud.remotefs.utility.BinaryBuffer;
+import org.stenerud.remotefs.utility.Decimal128Holder;
 import org.stenerud.remotefs.utility.NumericPromoter;
 import org.stenerud.remotefs.utility.StrictMap;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
@@ -29,6 +29,9 @@ public class Message implements Iterable<Object> {
         CLASS_TO_TYPE.put(Long.class, Specification.Type.INTEGER);
         CLASS_TO_TYPE.put(Double.class, Specification.Type.FLOAT);
         CLASS_TO_TYPE.put(String.class, Specification.Type.STRING);
+        CLASS_TO_TYPE.put(Date.class, Specification.Type.DATE);
+        CLASS_TO_TYPE.put(Instant.class, Specification.Type.DATE);
+        CLASS_TO_TYPE.put(Decimal128Holder.class, Specification.Type.DECIMAL);
         CLASS_TO_TYPE.put(byte[].class, Specification.Type.BYTES);
         CLASS_TO_TYPE.put(List.class, Specification.Type.LIST);
         CLASS_TO_TYPE.put(Map.class, Specification.Type.MAP);
@@ -56,8 +59,13 @@ public class Message implements Iterable<Object> {
         };
     }
 
-    public @Nonnull Specification getSpecification() {
+    // For unit testing only
+    @Nonnull Specification getSpecification() {
         return specification;
+    }
+
+    public @Nonnull String getIdentifier() {
+        return specification.name;
     }
 
     public void verifyCompleteness() {
@@ -100,10 +108,6 @@ public class Message implements Iterable<Object> {
 
     public @Nonnull
     Message add(@Nullable Object value) {
-        // TODO: What to do when the client adds too many parameters?
-        // Throw an exception?
-        // Silently ignore?
-        // Which is better for forward compatibility?
         return set(getNextSpecificationName(), value);
     }
 
@@ -122,11 +126,6 @@ public class Message implements Iterable<Object> {
         value = convert(value, paramSpec.type);
         Specification.Type type = getEffectiveType(paramSpec, value);
         return setUnchecked(name, type, value);
-    }
-
-    public @Nonnull
-    Message addUnchecked(@Nonnull Specification.Type type, @Nullable Object value) {
-        return setUnchecked(getNextSpecificationName(), type, value);
     }
 
     public @Nonnull
@@ -154,35 +153,6 @@ public class Message implements Iterable<Object> {
 
     public @Nonnull Object getObject(@Nonnull String parameterName) {
         return get(parameterName, Object.class);
-    }
-
-    public boolean getBoolean(@Nonnull String parameterName) {
-        return get(parameterName, Boolean.class);
-    }
-
-    public long getLong(@Nonnull String parameterName) {
-        return get(parameterName, Long.class);
-    }
-
-    public double getDouble(@Nonnull String parameterName) {
-        return get(parameterName, Double.class);
-    }
-
-    public @Nonnull String getString(@Nonnull String parameterName) {
-        return get(parameterName, String.class);
-    }
-
-    public @Nonnull byte[] getBytes(@Nonnull String parameterName) {
-        return get(parameterName, byte[].class);
-    }
-
-    public @Nonnull
-    List getList(@Nonnull String parameterName) {
-        return get(parameterName, List.class);
-    }
-
-    public @Nonnull Map getMap(@Nonnull String parameterName) {
-        return get(parameterName, Map.class);
     }
 
     private @Nonnull

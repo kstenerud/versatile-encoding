@@ -5,6 +5,9 @@ import org.stenerud.remotefs.transport.MessageHandlerRegistry;
 import org.stenerud.remotefs.utility.ObjectHolder;
 import org.stenerud.remotefs.transport.SimpleTransportProducer;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -12,9 +15,9 @@ public class SessionProducerTest {
     @Test
     public void testSessionProduction() throws Exception {
         SimpleTransportProducer transportProducer = new SimpleTransportProducer();
-        MessageHandlerRegistry registry = new MessageHandlerRegistry();
+        Map<String, MessageHandler> messageHandlers = new HashMap<>();
         Context context = new Context();
-        SessionProducer sessionProducer = new SessionProducer(transportProducer, registry, context);
+        SessionProducer sessionProducer = new SessionProducer(transportProducer, messageHandlers, context);
         ObjectHolder holder = new ObjectHolder();
         sessionProducer.setListener(session -> holder.set(session));
         transportProducer.produceTransportPair();

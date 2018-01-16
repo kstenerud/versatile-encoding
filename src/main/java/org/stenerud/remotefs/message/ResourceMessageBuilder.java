@@ -3,13 +3,15 @@ package org.stenerud.remotefs.message;
 import javax.annotation.Nonnull;
 
 public class ResourceMessageBuilder extends MessageBuilder {
+    public static final String ID = "resource";
+
     private static final String RESOURCE_ID = "resource_id";
     private static final String CHUNK_COUNT = "chunk_count";
     private static final String CHUNK_INDEX = "chunk_index";
     private static final String CHUNK = "chunk";
 
     public ResourceMessageBuilder() {
-        super(new Specification("resource",
+        super(new Specification(ID,
                 "Resource message",
                 new Specification.ParameterSpecification(RESOURCE_ID, Specification.Type.INTEGER, "Resource ID"),
                 new Specification.ParameterSpecification(CHUNK_COUNT, Specification.Type.INTEGER, "The total number of chunks"),

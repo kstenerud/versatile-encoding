@@ -7,6 +7,7 @@ import org.stenerud.remotefs.codec.MessageCodec;
 import org.stenerud.remotefs.message.InternalExceptionMessageBuilder;
 import org.stenerud.remotefs.message.Message;
 import org.stenerud.remotefs.message.Specification;
+import org.stenerud.remotefs.session.OutgoingResource;
 import org.stenerud.remotefs.utility.Closer;
 import org.stenerud.remotefs.utility.BinaryBuffer;
 import org.stenerud.remotefs.utility.LoopingThread;
@@ -94,6 +95,12 @@ public class StreamTransport implements AutoCloseable, Transport {
         } catch(IOException e) {
             throw new DisconnectedException(e);
         }
+    }
+
+    @Nonnull
+    @Override
+    public <T> OutgoingResource<T> sendStreamMessage(@Nonnull Message message, Class<T> streamType) throws IOException {
+        return null;
     }
 
     @Override

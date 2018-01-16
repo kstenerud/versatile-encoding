@@ -5,6 +5,8 @@ import javax.annotation.Nullable;
 import java.util.Map;
 
 public class ExceptionMessageBuilder extends MessageBuilder {
+    public static final String ID = "exception";
+
     private static final String PROCESS_ID = "process_id";
     private static final String RESOURCE_ID = "resource_id";
     private static final String TYPE = "type";
@@ -12,7 +14,7 @@ public class ExceptionMessageBuilder extends MessageBuilder {
     private static final String CONTEXT_INFO = "context_info";
 
     public ExceptionMessageBuilder() {
-        super(new Specification("exception",
+        super(new Specification(ID,
                 "Exception notification",
                 new Specification.ParameterSpecification(PROCESS_ID, Specification.Type.INTEGER, "The process (if any) associated with this exception", Specification.Attribute.OPTIONAL),
                 new Specification.ParameterSpecification(RESOURCE_ID, Specification.Type.INTEGER, "The resource (if any) associated with this exception", Specification.Attribute.OPTIONAL),

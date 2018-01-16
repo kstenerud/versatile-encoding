@@ -3,11 +3,13 @@ package org.stenerud.remotefs.message;
 import javax.annotation.Nonnull;
 
 public class ProcessStatusMessageBuilder extends MessageBuilder {
+    public static final String ID = "process status";
+
     private static final String PROCESS_ID = "process id";
     private static final String COMPLETION = "percent_complete";
 
     public ProcessStatusMessageBuilder() {
-        super(new Specification("status",
+        super(new Specification(ID,
                 "Status notification",
                 new Specification.ParameterSpecification(PROCESS_ID, Specification.Type.INTEGER, "The ID of the process to report status on"),
                 new Specification.ParameterSpecification(COMPLETION, Specification.Type.INTEGER, "Percent complete")

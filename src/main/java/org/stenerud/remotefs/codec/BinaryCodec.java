@@ -1,9 +1,7 @@
 package org.stenerud.remotefs.codec;
 
-import org.stenerud.remotefs.utility.BinaryBuffer;
-import org.stenerud.remotefs.utility.Decimal128Holder;
-import org.stenerud.remotefs.utility.Int128Holder;
-import org.stenerud.remotefs.utility.Utf8Tool;
+import com.sun.org.apache.xpath.internal.operations.Bool;
+import org.stenerud.remotefs.utility.*;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
@@ -15,6 +13,8 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
@@ -64,6 +64,11 @@ public class BinaryCodec {
     }
 
     public static class Encoder {
+        interface Writer<T> {
+            int write(@Nonnull T value) throws NoRoomException;
+        }
+
+        private final Map<Class, Writer> writers = StrictMap.withImplementation(ConcurrentHashMap::new);
         private final LittleEndianCodec endianCodec;
         final BinaryBuffer buffer;
         int currentOffset;
@@ -72,48 +77,45 @@ public class BinaryCodec {
             this.buffer = buffer;
             this.currentOffset = buffer.startOffset;
             this.endianCodec = new LittleEndianCodec(buffer);
+            buildWriters();
         }
 
         public @Nonnull BinaryBuffer newView() {
             return buffer.newView(buffer.startOffset, currentOffset);
         }
 
+        private void buildWriters() {
+            writers.put(Boolean.class, (Writer<Boolean>) this::writeBoolean);
+            writers.put(Byte.class, (Writer<Byte>) this::writeInteger);
+            writers.put(Short.class, (Writer<Short>) this::writeInteger);
+            writers.put(Integer.class, (Writer<Integer>) this::writeInteger);
+            writers.put(Long.class, (Writer<Long>) this::writeInteger);
+            writers.put(Float.class, (Writer<Float>) this::writeFloat32);
+            writers.put(Double.class, (Writer<Double>) this::writeFloat);
+            writers.put(Int128Holder.class, (Writer<Int128Holder>) this::writeDecimal128);
+            writers.put(byte[].class, (Writer<byte[]>) this::writeBytes);
+            writers.put(BinaryBuffer.class, (Writer<BinaryBuffer>) this::writeBytes);
+            writers.put(String.class, (Writer<String>) this::writeString);
+            writers.put(Date.class, (Writer<Date>) this::writeDate);
+            writers.put(Instant.class, (Writer<Instant>) this::writeDate);
+            writers.put(List.class, (Writer<List>) this::writeList);
+            writers.put(Map.class, (Writer<Map>) this::writeMap);
+        }
+
         public int writeObject(@CheckForNull Object value) throws NoRoomException {
             if(value == null) {
                 return writeEmpty();
-            } else if(value instanceof Long) {
-                return writeInteger((long)value);
-            } else if(value instanceof Double) {
-                return writeFloat((double)value);
-            } else if(value instanceof String) {
-                return writeString((String)value);
-            } else if(value instanceof BinaryBuffer) {
-                return writeBytes((BinaryBuffer) value);
-            } else if(value instanceof List) {
-                return writeList((List)value);
-            } else if(value instanceof Map) {
-                return writeMap((Map<Object, Object>)value);
-            } else if(value instanceof byte[]) {
-                return writeBytes((byte[])value);
-            } else if(value instanceof Byte) {
-                return writeInteger((byte)value);
-            } else if(value instanceof Short) {
-                return writeInteger((short)value);
-            } else if(value instanceof Integer) {
-                return writeInteger((int)value);
-            } else if(value instanceof Float) {
-                return writeFloat32((float)value);
-            } else if(value instanceof Boolean) {
-                return writeBoolean((boolean)value);
-            } else if(value instanceof Int128Holder) {
-                return writeDecimal128((Int128Holder)value);
-            } else if(value instanceof Date) {
-                return writeDate((Date)value);
-            } else if(value instanceof Instant) {
-                return writeDate((Instant) value);
-            } else {
-                throw new IllegalArgumentException("Don't know how to encode type " + value.getClass());
             }
+            Writer writer = writers.computeIfAbsent(value.getClass(), aClass -> {
+                for(Map.Entry<Class, Writer> entry: writers.entrySet()) {
+                    Class superclass = entry.getKey();
+                    if(superclass.isAssignableFrom(aClass)) {
+                        return entry.getValue();
+                    }
+                }
+                throw new IllegalArgumentException("Don't know how to encode type " + aClass);
+            });
+            return writer.write(value);
         }
 
         private int write8(int value) throws NoRoomException {

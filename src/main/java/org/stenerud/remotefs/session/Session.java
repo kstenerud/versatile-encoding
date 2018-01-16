@@ -1,7 +1,9 @@
 package org.stenerud.remotefs.session;
 
 import org.stenerud.remotefs.message.Message;
+import org.stenerud.remotefs.message.ResourceMessageBuilder;
 import org.stenerud.remotefs.message.Specification;
+import org.stenerud.remotefs.transport.MessageProducer;
 import org.stenerud.remotefs.transport.Transport;
 import org.stenerud.remotefs.utility.Closer;
 import org.stenerud.remotefs.utility.StrictMap;
@@ -22,9 +24,9 @@ public class Session implements AutoCloseable {
     private final Transport transport;
     private final Context context;
     private final Map<String, MessageHandler> messageHandlers = StrictMap.withImplementation(HashMap::new).withErrorFormat("No message handler registered for specification %s");
-    private final Map<Integer, LocalProcess> activeProcesses = StrictMap.withImplementation(ConcurrentHashMap::new).withErrorFormat("%s: No such process");
-    private final Map<Integer, OutgoingResource> outgoingResources = StrictMap.withImplementation(ConcurrentHashMap::new).withErrorFormat("%s: No such outgoing resource");
-    private final Map<Integer, IncomingResource> incomingResources = StrictMap.withImplementation(ConcurrentHashMap::new).withErrorFormat("%s: No such incoming resource");
+    private final Map<Long, LocalProcess> activeProcesses = StrictMap.withImplementation(ConcurrentHashMap::new).withErrorFormat("%s: No such process");
+    private final Map<Long, OutgoingResource> outgoingResources = StrictMap.withImplementation(ConcurrentHashMap::new).withErrorFormat("%s: No such outgoing resource");
+    private final Map<Long, IncomingResource> incomingResources = StrictMap.withImplementation(ConcurrentHashMap::new).withErrorFormat("%s: No such incoming resource");
 
     private Listener listener = session -> {};
 
@@ -34,6 +36,8 @@ public class Session implements AutoCloseable {
         this.transport = transport;
         this.messageHandlers.putAll(messageHandlers);
         this.transport.setListener(message -> handleMessage(message));
+
+        messageHandlers.put(ResourceMessageBuilder.ID, (message, context1) -> routeResource(message, context1));
     }
 
     public void setListener(Listener listener) {
@@ -41,7 +45,13 @@ public class Session implements AutoCloseable {
     }
 
     private void handleMessage(@Nonnull Message message) {
+        // todo: exceptions
         messageHandlers.get(message.getIdentifier()).handleMessage(message, context);
+    }
+
+    private void routeResource(@Nonnull Message incomingMessage, Context context) {
+        ResourceMessageBuilder.Message message = (ResourceMessageBuilder.Message)incomingMessage;
+        incomingResources.get(message.getResourceId()).handleMessage(message, context);
     }
 
     @Override

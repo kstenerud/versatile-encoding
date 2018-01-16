@@ -2,10 +2,7 @@ package org.stenerud.remotefs.codec;
 
 import junit.framework.AssertionFailedError;
 import org.junit.Test;
-import org.stenerud.remotefs.utility.BinaryBuffer;
-import org.stenerud.remotefs.utility.DeepEquality;
-import org.stenerud.remotefs.utility.Int128Holder;
-import org.stenerud.remotefs.utility.ObjectHolder;
+import org.stenerud.remotefs.utility.*;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -49,9 +46,13 @@ public class BinaryCodecTest {
         assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 7, "𩶘𩶘", "𩶘");
         assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 8, "𩶘𩶘", "𩶘𩶘");
 
-        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 0, "これはマルチバイトです", "");
         assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 1, "これはマルチバイトです", "");
         assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 2, "これはマルチバイトです", "");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 3, "これはマルチバイトです", "こ");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 4, "これはマルチバイトです", "こ");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 5, "これはマルチバイトです", "こ");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 6, "これはマルチバイトです", "これ");
+        assertStringStreamCutoff(BYTES_PROTOCOL_OVERHEAD + 7, "これはマルチバイトです", "これ");
     }
 
     private void assertStringStreamCutoff(int bufferLength, String input, String expected) throws Exception {
@@ -134,7 +135,7 @@ public class BinaryCodecTest {
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
         BinaryCodec.Encoder.MapStream stream = encoder.newMapStream();
         for(Map.Entry entry: expected.entrySet()) {
-            stream.write(entry.getKey(), entry.getValue());
+            stream.write(new KeyValue(entry));
         }
         stream.close();
         Object result = decodeSingleObject(encoder.newView(), Map.class);
@@ -151,7 +152,7 @@ public class BinaryCodecTest {
             for(;;) {
                 Object k = "key";
                 Object v = "value";
-                stream.write(k, v);
+                stream.write(new KeyValue(k, v));
                 expected.put(k, v);
             }
         } catch(BinaryCodec.NoRoomException e) {
@@ -164,13 +165,15 @@ public class BinaryCodecTest {
 
     @Test
     public void testStreamBytes() throws Exception {
-        assertStreamBufferToBuffer(5, 100, 12, 18);
-        assertStreamBufferToBuffer(0, 100, 0, 6);
-        assertStreamBufferToBuffer(0, 100, 0, 16);
+        assertStreamBufferToBuffer(5, 100, 12, 19);
         assertStreamBufferToBuffer(0, 100, 0, 7);
+        assertStreamBufferToBuffer(0, 100, 0, 16);
+        assertStreamBufferToBuffer(0, 100, 0, 8);
         assertStreamBufferToBuffer(5, 10, 12, 100);
         assertStreamBufferToBufferThrows(0, 100, 0, 5);
+        assertStreamBufferToBufferThrows(0, 100, 0, 6);
         assertStreamBufferToBufferThrows(0, 100, 10, 15);
+        assertStreamBufferToBufferThrows(0, 100, 10, 16);
     }
 
     private void assertStreamBufferToBufferThrows(int srcStartOffset, int srcEndOffset, int dstStartOffset, int dstEndOffset) throws BinaryCodec.NoRoomException, BinaryCodec.EndOfDataException {
@@ -206,7 +209,13 @@ public class BinaryCodecTest {
     private BinaryBuffer streamBufferToBuffer(BinaryBuffer src, BinaryBuffer dst) throws BinaryCodec.NoRoomException {
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(dst);
         BinaryCodec.Encoder.ByteStream stream = encoder.newByteStream();
-        while(stream.write(src) > 0) {
+        // First stream must succeed
+        stream.write(src);
+        try {
+            while (stream.write(src) > 0) {
+            }
+        } catch(BinaryCodec.NoRoomException e) {
+            // This is our stopping point
         }
         stream.close();
         return encoder.newView();

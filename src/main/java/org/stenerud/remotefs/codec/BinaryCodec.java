@@ -420,6 +420,12 @@ public class BinaryCodec {
             }
         }
 
+        interface Stream<T> extends AutoCloseable {
+            int write(T value) throws NoRoomException;
+            @Override
+            void close() throws Exception;
+        }
+
         public ByteStream newByteStream() throws NoRoomException {
             return new ByteStream();
         }
@@ -436,7 +442,7 @@ public class BinaryCodec {
             return new MapStream();
         }
 
-        public class ListStream {
+        public class ListStream implements Stream<Object> {
             private final Encoder encoder;
 
             private ListStream() throws NoRoomException {
@@ -445,9 +451,10 @@ public class BinaryCodec {
                 this.encoder = new Encoder(buffer.newView(currentOffset, buffer.endOffset-1));
             }
 
-            public void write(@Nonnull Object value) throws NoRoomException {
+            public int write(@Nonnull Object value) throws NoRoomException {
                 encoder.writeObject(value);
                 currentOffset = encoder.currentOffset;
+                return 1;
             }
 
             public void close() {
@@ -459,7 +466,7 @@ public class BinaryCodec {
             }
         }
 
-        public class MapStream {
+        public class MapStream implements Stream<KeyValue> {
             private final Encoder encoder;
 
             private MapStream() throws NoRoomException {
@@ -468,10 +475,11 @@ public class BinaryCodec {
                 this.encoder = new Encoder(buffer.newView(currentOffset, buffer.endOffset-1));
             }
 
-            public void write(@Nonnull Object key, @Nonnull Object value) throws NoRoomException {
-                encoder.writeObject(key);
-                encoder.writeObject(value);
+            public int write(@Nonnull KeyValue keyValue) throws NoRoomException {
+                encoder.writeObject(keyValue.key);
+                encoder.writeObject(keyValue.value);
                 currentOffset = encoder.currentOffset;
+                return 1;
             }
 
             public void close() {
@@ -488,7 +496,7 @@ public class BinaryCodec {
                 super(EncodedType.STRING);
             }
 
-            public int write(@Nonnull BinaryBuffer fromBuffer) {
+            public int write(@Nonnull BinaryBuffer fromBuffer) throws NoRoomException {
                 int beforeOffset = viewOffset;
                 int bytesWritten = super.write(fromBuffer);
                 if(bytesWritten < fromBuffer.length) {
@@ -498,7 +506,7 @@ public class BinaryCodec {
             }
         }
 
-        public class ByteStream {
+        public class ByteStream implements Stream<BinaryBuffer> {
             // type BYTES, type INT32, 32-bit length
             final int typeAndLengthOffset = 6;
             final BinaryBuffer view;
@@ -519,7 +527,7 @@ public class BinaryCodec {
                 }
             }
 
-            public int write(@Nonnull BinaryBuffer fromBuffer) {
+            public int write(@Nonnull BinaryBuffer fromBuffer) throws NoRoomException {
                 int bytesAdded;
                 try {
                     view.copyFrom(fromBuffer, fromBuffer.startOffset, viewOffset, fromBuffer.length);
@@ -527,7 +535,7 @@ public class BinaryCodec {
                 } catch(IndexOutOfBoundsException e) {
                     bytesAdded = view.lengthRemainingFromOffset(viewOffset);
                     if(bytesAdded <= 0) {
-                        return 0;
+                        throw new NoRoomException();
                     }
                     view.copyFrom(fromBuffer, fromBuffer.startOffset, viewOffset, bytesAdded);
                 }

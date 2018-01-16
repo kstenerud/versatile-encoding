@@ -7,6 +7,7 @@ import org.stenerud.remotefs.utility.StrictMap;
 
 import javax.annotation.Nonnull;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -51,30 +52,51 @@ public class MessageCodec {
         typeToBuilder.put(type, builder);
     }
 
-    public BinaryBuffer encode(@Nonnull Message message, @Nonnull BinaryBuffer buffer) throws BinaryCodec.NoRoomException {
-        message.verifyCompleteness();
-        int type = identifierToType.get(message.getIdentifier());
-        final int maxContentsOffset = IntegerCodec.OneTwo.MAX_LENGTH + IntegerCodec.OneThree.MAX_LENGTH;
-        BinaryBuffer offsetView = buffer.newView(buffer.startOffset + maxContentsOffset);
-        BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(offsetView);
-        LittleEndianCodec endianCodec = new LittleEndianCodec(offsetView);
-        final IntegerCodec lengthCodec = new IntegerCodec.OneThree(endianCodec);
-        final IntegerCodec typeCodec = new IntegerCodec.OneTwo(endianCodec);
-
-        for(Object value: message) {
-            encoder.writeObject(value);
+    public class Encoder {
+        private final Message message;
+        private final BinaryCodec.Encoder binaryEncoder;
+        private final BinaryBuffer buffer;
+        private final BinaryBuffer offsetView;
+        public Encoder(@Nonnull Message message, @Nonnull BinaryBuffer buffer) throws BinaryCodec.NoRoomException {
+            this.message = message;
+            this.buffer = buffer;
+            message.verifyCompleteness();
+            final int maxContentsOffset = IntegerCodec.OneTwo.MAX_LENGTH + IntegerCodec.OneThree.MAX_LENGTH;
+            this.offsetView = buffer.newView(buffer.startOffset + maxContentsOffset);
+            binaryEncoder = new BinaryCodec.Encoder(offsetView);
         }
 
-        BinaryBuffer encodedView = encoder.newView();
-        int offset = encodedView.startOffset;
-        int typeLength = typeCodec.getRequiredEncodingLength(type);
-        offset -= typeLength;
-        typeCodec.encode(offset, type);
-        int length = encodedView.length + typeLength;
-        int lengthLength = lengthCodec.getRequiredEncodingLength(length);
-        offset -= lengthLength;
-        lengthCodec.encode(offset, length);
-        return buffer.newView(offset, encodedView.endOffset);
+        public void writeMessageParameters(int parameterCount) throws BinaryCodec.NoRoomException {
+            Iterator<Object> iterator = message.iterator();
+            for(int i = 0; i < parameterCount; i++) {
+                binaryEncoder.writeObject(iterator.next());
+
+            }
+        }
+
+        public BinaryBuffer completeEncoding() {
+            int type = identifierToType.get(message.getIdentifier());
+            LittleEndianCodec endianCodec = new LittleEndianCodec(offsetView);
+            final IntegerCodec lengthCodec = new IntegerCodec.OneThree(endianCodec);
+            final IntegerCodec typeCodec = new IntegerCodec.OneTwo(endianCodec);
+
+            BinaryBuffer encodedView = binaryEncoder.newView();
+            int offset = encodedView.startOffset;
+            int typeLength = typeCodec.getRequiredEncodingLength(type);
+            offset -= typeLength;
+            typeCodec.encode(offset, type);
+            int length = encodedView.length + typeLength;
+            int lengthLength = lengthCodec.getRequiredEncodingLength(length);
+            offset -= lengthLength;
+            lengthCodec.encode(offset, length);
+            return buffer.newView(offset, encodedView.endOffset);
+        }
+    }
+
+    public BinaryBuffer encode(@Nonnull Message message, @Nonnull BinaryBuffer buffer) throws BinaryCodec.NoRoomException {
+        Encoder encoder = new Encoder(message, buffer);
+        encoder.writeMessageParameters(message.getParameterCount());
+        return encoder.completeEncoding();
     }
 
     public @Nonnull

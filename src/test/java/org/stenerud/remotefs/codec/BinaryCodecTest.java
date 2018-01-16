@@ -58,7 +58,7 @@ public class BinaryCodecTest {
     private void assertStringStreamCutoff(int bufferLength, String input, String expected) throws Exception {
         BinaryBuffer encoded = new BinaryBuffer(bufferLength);
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
-        BinaryCodec.Encoder.ByteStream stream = encoder.newStringStream();
+        BinaryCodec.Encoder.Stream<BinaryBuffer> stream = encoder.newStringStream();
         stream.write(new BinaryBuffer(input.getBytes("UTF-8")));
         stream.close();
         String actual = decodeSingleObject(encoder.newView(), String.class);
@@ -69,7 +69,7 @@ public class BinaryCodecTest {
     public void testStringStreamMultibyte() throws Exception {
         BinaryBuffer encoded = new BinaryBuffer(100);
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
-        BinaryCodec.Encoder.ByteStream stream = encoder.newStringStream();
+        BinaryCodec.Encoder.Stream<BinaryBuffer> stream = encoder.newStringStream();
         stream.write(new BinaryBuffer("これは".getBytes("UTF-8")));
         stream.write(new BinaryBuffer("マルチバイトです".getBytes("UTF-8")));
         stream.close();
@@ -82,7 +82,7 @@ public class BinaryCodecTest {
     public void testStringStream() throws Exception {
         BinaryBuffer encoded = new BinaryBuffer(100);
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
-        BinaryCodec.Encoder.ByteStream stream = encoder.newStringStream();
+        BinaryCodec.Encoder.Stream<BinaryBuffer> stream = encoder.newStringStream();
         stream.write(new BinaryBuffer("hello".getBytes("UTF-8")));
         stream.write(new BinaryBuffer(" world".getBytes("UTF-8")));
         stream.close();
@@ -96,7 +96,7 @@ public class BinaryCodecTest {
         List<Object> expected = Arrays.asList("test", 1, 0.1);
         BinaryBuffer encoded = new BinaryBuffer(1000);
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
-        BinaryCodec.Encoder.ListStream stream = encoder.newListStream();
+        BinaryCodec.Encoder.Stream<Object> stream = encoder.newListStream();
         for(Object o: expected) {
             stream.write(o);
         }
@@ -110,7 +110,7 @@ public class BinaryCodecTest {
         List<Object> expected = new LinkedList<>();
         BinaryBuffer encoded = new BinaryBuffer(200);
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
-        BinaryCodec.Encoder.ListStream stream = encoder.newListStream();
+        BinaryCodec.Encoder.Stream<Object> stream = encoder.newListStream();
         try {
             for(;;) {
                 Object o = "test";
@@ -133,7 +133,7 @@ public class BinaryCodecTest {
         expected.put("two point 5", 2.5);
         BinaryBuffer encoded = new BinaryBuffer(1000);
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
-        BinaryCodec.Encoder.MapStream stream = encoder.newMapStream();
+        BinaryCodec.Encoder.Stream<KeyValue> stream = encoder.newMapStream();
         for(Map.Entry entry: expected.entrySet()) {
             stream.write(new KeyValue(entry));
         }
@@ -147,7 +147,7 @@ public class BinaryCodecTest {
         Map<Object, Object> expected = new HashMap<>();
         BinaryBuffer encoded = new BinaryBuffer(200);
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(encoded);
-        BinaryCodec.Encoder.MapStream stream = encoder.newMapStream();
+        BinaryCodec.Encoder.Stream<KeyValue> stream = encoder.newMapStream();
         try {
             for(;;) {
                 Object k = "key";
@@ -176,7 +176,7 @@ public class BinaryCodecTest {
         assertStreamBufferToBufferThrows(0, 100, 10, 16);
     }
 
-    private void assertStreamBufferToBufferThrows(int srcStartOffset, int srcEndOffset, int dstStartOffset, int dstEndOffset) throws BinaryCodec.NoRoomException, BinaryCodec.EndOfDataException {
+    private void assertStreamBufferToBufferThrows(int srcStartOffset, int srcEndOffset, int dstStartOffset, int dstEndOffset) throws Exception {
         try {
             assertStreamBufferToBuffer(srcStartOffset, srcEndOffset, dstStartOffset, dstEndOffset);
             assertTrue("Should have thrown", false);
@@ -185,7 +185,7 @@ public class BinaryCodecTest {
         }
     }
 
-    private void assertStreamBufferToBuffer(int srcStartOffset, int srcEndOffset, int dstStartOffset, int dstEndOffset) throws BinaryCodec.NoRoomException, BinaryCodec.EndOfDataException {
+    private void assertStreamBufferToBuffer(int srcStartOffset, int srcEndOffset, int dstStartOffset, int dstEndOffset) throws Exception {
         BinaryBuffer src = new BinaryBuffer(srcEndOffset+100).newView(srcStartOffset, srcEndOffset);
         BinaryBuffer dst = new BinaryBuffer(dstEndOffset+100).newView(dstStartOffset, dstEndOffset);
         fillWithSequentialData(src);
@@ -206,9 +206,9 @@ public class BinaryCodecTest {
         return expected;
     }
 
-    private BinaryBuffer streamBufferToBuffer(BinaryBuffer src, BinaryBuffer dst) throws BinaryCodec.NoRoomException {
+    private BinaryBuffer streamBufferToBuffer(BinaryBuffer src, BinaryBuffer dst) throws Exception {
         BinaryCodec.Encoder encoder = new BinaryCodec.Encoder(dst);
-        BinaryCodec.Encoder.ByteStream stream = encoder.newByteStream();
+        BinaryCodec.Encoder.Stream<BinaryBuffer> stream = encoder.newByteStream();
         // First stream must succeed
         stream.write(src);
         try {

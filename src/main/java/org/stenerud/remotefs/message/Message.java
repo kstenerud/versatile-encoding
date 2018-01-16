@@ -83,6 +83,10 @@ public class Message implements Iterable<Object> {
         }
     }
 
+    public int getParameterCount() {
+        return parameters.size();
+    }
+
     public static class Parameter {
         public final Specification.Type type;
         public final Object value;

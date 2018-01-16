@@ -426,19 +426,19 @@ public class BinaryCodec {
             void close() throws Exception;
         }
 
-        public ByteStream newByteStream() throws NoRoomException {
+        public Stream<BinaryBuffer> newByteStream() throws NoRoomException {
             return new ByteStream();
         }
 
-        public ByteStream newStringStream() throws NoRoomException {
+        public Stream<BinaryBuffer> newStringStream() throws NoRoomException {
             return new StringStream();
         }
 
-        public ListStream newListStream() throws NoRoomException {
+        public Stream<Object> newListStream() throws NoRoomException {
             return new ListStream();
         }
 
-        public MapStream newMapStream() throws NoRoomException {
+        public Stream<KeyValue> newMapStream() throws NoRoomException {
             return new MapStream();
         }
 

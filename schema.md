@@ -36,126 +36,86 @@ Type codes fall within the printable ASCII range to make them representable in t
 
 
 
+call get_api_calls
 {
-    "name": "get_api_calls",
-    "type": "call",
-    "version": 0,
-    "return": ["list", "call"],
-    "parameters":
+    name: get_api_calls
+    description: "Get some API call schemas"
+    version: 0
+    return: list<call>
+    parameters:
     [
-        {"name": "name",    "type": ["string"],  "flags": ["optional"], "description": "Name search pattern"},
-        {"name": "version", "type": ["integer"], "flags": ["optional"], "description": "Only return entries for the specified version number"}
-    ],
-    "description": "Get some API call schemas",
-}
-
-
-{
-    "name": "call",
-    "type": "object",
-    "fields":
-    [
-        {"name": "name",        "type": ["string"]},
-        {"name": "version",     "type": ["integer"]},
-        {"name": "return",      "type": ["list", "type"]},
-        {"name": "parameters",  "type": ["list", "parameter"]},
-        {"name": "description", "type": ["string"],             "flags": ["optional"]}
-    ]
-}
-
-{
-    "name": "parameter",
-    "type": "object",
-    "fields":
-    [
-        {"name": "name",        "type": ["string"]},
-        {"name": "type",        "type": ["list", "type"]},
-        {"name": "flags",       "type": ["set", "flag"],       "flags": ["optional"]},
-        {"name": "constraints", "type": ["set", "constraint"], "flags": ["optional"]},
-        {"name": "description", "type": ["string"],            "flags": ["optional"]}
+        {
+            name: name
+            description: "Name search pattern"
+            type: string
+            flags: [optional]
+        }
+        {
+            name: version
+            description: "Only return entries for the specified version number"
+            type: integer
+            flags: [optional]
+        }
     ]
 }
 
 
-
-
+class call
 {
-    "name": "field",
-    "type": "object",
-    "fields":
-    [
-        {"name": "name",        "type": ["string"]},
-        {"name": "type",        "type": ["list", "type"]},
-        {"name": "flags",       "type": ["set", "flag"],       "flags": ["optional"]},
-        {"name": "constraints", "type": ["set", "constraint"], "flags": ["optional"]}
-    ]
+    name: string
+    description: string optional
+    version: integer
+    return: type
 }
 
+class parameter
 {
-    "name": "object",
-    "type": "type",
-    "fields":
-    [
-        {"name": "name",        "type": ["string"]},
-        {"name": "type",        "type": ["list", "type"]},
-        {"name": "fields",      "type": ["list", "field"]},
-    ]
+    name: string
+    description: string optional
+    type: type
+    flags: set<flag> optional
+    constraints: set<constraint> optional
 }
 
+class field
 {
-    "name": "enum",
-    "type": "type",
-    "fields":
-    [
-        {"name": "name",        "type": ["string"]},
-        {"name": "type",        "type": ["list", "type"]},
-        {"name": "values",      "type": ["set", "string"]},
-    ]
+    name: string
+    type: type
+    flags: set<flag> optional
+    constraints: set<constraint> optional
 }
 
+enum type
 {
-    "name": "type",
-    "type": "enum",
-    "values":
-    [
-        "none",
-        "any",
-        "boolean",
-        "integer",
-        "float",
-        "decimal",
-        "date",
-        "string",
-        "bytes,
-        "list",
-        "set",
-        "ordered_set",
-        "map",
-        "unique_map",
-        "ordered_map",
-        "ordered_unique_map",
-        "object"
-    ]
+    none
+    any
+    boolean
+    integer
+    float
+    decimal
+    date
+    string
+    bytes
+    list
+    set
+    ordered_set
+    map
+    unique_map
+    ordered_map
+    ordered_unique_map
+    object
 }
 
+enum flag
 {
-    "name": "flag",
-    "type": "enum",
-    "values":
-    [
-        "optional",
-        "streamable",
-    ]
+    optional
+    streamable
 }
 
+enum constraint
 {
-    "name": "constraint",
-    "type": "enum",
-    "values":
-    [
-        "minimum",
-        "maximum"
-    ]
+    minimum
+    maximum
 }
 
 
